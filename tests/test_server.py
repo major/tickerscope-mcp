@@ -58,7 +58,7 @@ class TestLifespan:
             "create",
             new=AsyncMock(return_value=mock_client),
         ):
-            async with Client(mcp) as client:
+            async with Client(mcp):
                 # Lifespan ran, client was created
                 pass
         mock_client.aclose.assert_called_once()
