@@ -352,3 +352,55 @@ class TestListScreens:
         else:
             data = cast(Any, result.structured_content).get("result", [])
         assert data == []
+
+
+class TestRunScreen:
+    """Tests for run_screen tool behavior and error handling."""
+
+    async def test_run_screen_happy_path(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return screen results with screen_name, num_instruments, and rows."""
+        result = await mcp_client.call_tool("run_screen", {"screen_name": "IBD 50"})
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert data["screen_name"] == "IBD 50"
+        assert "num_instruments" in data
+        assert "rows" in data
+        mock_client.run_screen.assert_called_once_with("IBD 50", [])
+
+    async def test_run_screen_with_params(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Pass screen parameters through to the client."""
+        params = [{"name": "MinPrice", "value": "10"}]
+        await mcp_client.call_tool(
+            "run_screen", {"screen_name": "IBD 50", "parameters": params}
+        )
+
+        mock_client.run_screen.assert_called_once_with("IBD 50", params)
+
+    async def test_run_screen_no_params_default(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Default to empty parameters list when none provided."""
+        await mcp_client.call_tool("run_screen", {"screen_name": "IBD 50"})
+
+        mock_client.run_screen.assert_called_once_with("IBD 50", [])
+
+    async def test_run_screen_api_error(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Raise ToolError when API returns an error."""
+        mock_client.run_screen.side_effect = APIError("screen failed")
+
+        with pytest.raises(ToolError, match="API error"):
+            await mcp_client.call_tool("run_screen", {"screen_name": "INVALID"})

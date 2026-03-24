@@ -173,3 +173,39 @@ async def list_screens(ctx: Context) -> list[dict]:
         {"id": s.id, "name": s.name, "description": s.description, "type": s.type}
         for s in screens
     ]
+
+
+@mcp.tool
+async def run_screen(
+    screen_name: Annotated[
+        str,
+        "Name of the predefined MarketSurge screen to run, e.g. 'IBD 50', 'Sector Leaders', 'IBD Big Cap 20'",
+    ],
+    ctx: Context,
+    parameters: Annotated[
+        list[dict[str, str]] | None,
+        "Optional screen parameters as a list of {name, value} dicts",
+    ] = None,
+) -> dict:
+    """Run a predefined MarketSurge screen and return matching stocks.
+
+    Examples of predefined screens: 'IBD 50', 'Sector Leaders', 'IBD Big Cap 20'.
+    Some screens accept parameters as a list of {name, value} dicts.
+
+    Note: this runs predefined MarketSurge screens, not user-saved screens.
+    Use list_screens to view user-saved screens.
+    """
+    client = ctx.lifespan_context["client"]
+    try:
+        result = await client.run_screen(screen_name, parameters or [])
+    except Exception as exc:
+        from tickerscope_mcp import handle_tickerscope_error
+
+        handle_tickerscope_error(exc)
+        raise  # unreachable: handle_tickerscope_error always raises ToolError
+    return {
+        "screen_name": result.screen_name,
+        "num_instruments": result.num_instruments,
+        "elapsed_time": result.elapsed_time,
+        "rows": result.rows,
+    }
