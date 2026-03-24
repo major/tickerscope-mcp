@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import date, timedelta
 from typing import Annotated
 
 from fastmcp import Context
+from fastmcp.exceptions import ToolError
 
 from tickerscope_mcp import mcp
+
+PERIOD_DAYS = {"1W": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365}
 
 
 @mcp.tool
@@ -51,4 +55,65 @@ async def analyze_stock(
             if not isinstance(ownership_result, Exception)
             else {"error": str(ownership_result)}
         ),
+    }
+
+
+@mcp.tool
+async def get_price_history(
+    symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
+    ctx: Context,
+    start_date: Annotated[
+        str | None,
+        "Start date in ISO format (YYYY-MM-DD). Use with end_date.",
+    ] = None,
+    end_date: Annotated[
+        str | None,
+        "End date in ISO format (YYYY-MM-DD). Use with start_date.",
+    ] = None,
+    period: Annotated[
+        str | None,
+        "Relative period: 1W, 1M, 3M, 6M, or 1Y. Cannot be used with start_date/end_date.",
+    ] = None,
+    max_points: Annotated[int, "Maximum number of data points to return."] = 500,
+) -> dict:
+    """Fetch OHLCV price history for a stock from MarketSurge.
+
+    Provide either (start_date + end_date) or period, not both.
+    """
+    if period and (start_date or end_date):
+        raise ToolError("Provide either period OR start_date/end_date, not both.")
+    if not period and not (start_date and end_date):
+        raise ToolError(
+            "Provide either period (e.g. '6M') or both start_date and end_date."
+        )
+
+    if period:
+        if period not in PERIOD_DAYS:
+            raise ToolError(
+                f"Invalid period '{period}'. Use one of: {', '.join(PERIOD_DAYS)}"
+            )
+        today = date.today()
+        end_date = today.isoformat()
+        start_date = (today - timedelta(days=PERIOD_DAYS[period])).isoformat()
+
+    client = ctx.lifespan_context["client"]  # type: ignore[attr-defined]
+    try:
+        chart_data = await client.get_chart_data(
+            symbol,
+            start_date=start_date,
+            end_date=end_date,
+            max_points=max_points,
+        )
+    except Exception as exc:
+        from tickerscope_mcp import handle_tickerscope_error
+
+        handle_tickerscope_error(exc)
+        raise  # unreachable: handle_tickerscope_error always raises ToolError
+
+    return {
+        "symbol": symbol,
+        "start_date": start_date,
+        "end_date": end_date,
+        "max_points": max_points,
+        **chart_data.to_dict(),
     }
