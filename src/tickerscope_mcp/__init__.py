@@ -16,7 +16,7 @@ from tickerscope import (
 
 
 @asynccontextmanager
-async def lifespan(app: FastMCP):  # type: ignore[no-untyped-def]
+async def lifespan(app: FastMCP):
     """Manage AsyncTickerScopeClient lifecycle.
 
     Creates a client via AsyncTickerScopeClient.create() and ensures

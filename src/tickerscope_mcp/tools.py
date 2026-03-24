@@ -96,7 +96,7 @@ async def get_price_history(
         end_date = today.isoformat()
         start_date = (today - timedelta(days=PERIOD_DAYS[period])).isoformat()
 
-    client = ctx.lifespan_context["client"]  # type: ignore[attr-defined]
+    client = ctx.lifespan_context["client"]
     try:
         chart_data = await client.get_chart_data(
             symbol,

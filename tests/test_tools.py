@@ -9,7 +9,7 @@ from typing import Any, cast
 import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
-from tickerscope import APIError, SymbolNotFoundError, WatchlistEntry  # type: ignore[reportMissingImports]
+from tickerscope import APIError, SymbolNotFoundError, WatchlistEntry
 
 
 class TestAnalyzeStock:
