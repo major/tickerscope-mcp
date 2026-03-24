@@ -14,8 +14,6 @@ from tickerscope import (
     TokenExpiredError,
 )
 
-from . import tools  # noqa: F401
-
 
 @asynccontextmanager
 async def lifespan(app: FastMCP):  # type: ignore[no-untyped-def]
@@ -40,6 +38,8 @@ mcp = FastMCP(
         "Always provide accurate ticker symbols and handle errors gracefully."
     ),
 )
+
+from . import tools  # noqa: F401, E402
 
 
 def handle_tickerscope_error(exc: Exception) -> None:

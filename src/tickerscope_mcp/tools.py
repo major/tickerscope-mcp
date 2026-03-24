@@ -3,63 +3,33 @@
 from __future__ import annotations
 
 import asyncio
-import sys
-import threading
-import time
-from typing import Annotated, Any, Callable, cast
+from typing import Annotated
 
 from fastmcp import Context
 
-
-def _register_on_package_mcp(func: Callable[..., Any]) -> None:
-    """Register tool on package mcp after circular import completes."""
-
-    def _register() -> None:
-        for _ in range(100):
-            package_module = sys.modules.get("tickerscope_mcp")
-            if package_module is None:
-                time.sleep(0.01)
-                continue
-            package_mcp = getattr(package_module, "mcp", None)
-            if package_mcp is None:
-                time.sleep(0.01)
-                continue
-            package_mcp.tool(func)
-            return
-
-    threading.Thread(target=_register, daemon=True).start()
-
-
-class _MCPProxy:
-    """Proxy decorator to defer registration until mcp exists."""
-
-    def tool(self, func: Callable[..., Any]) -> Callable[..., Any]:
-        """Register function as mcp tool once package initialization completes."""
-        _register_on_package_mcp(func)
-        return func
-
-
-mcp = _MCPProxy()
+from tickerscope_mcp import mcp
 
 
 @mcp.tool
 async def analyze_stock(
-    symbol: Annotated[str, "Stock ticker symbol, for example AAPL or NVDA"],
+    symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,
 ) -> dict:
-    """Fetch stock, fundamentals, and ownership data concurrently."""
-    ctx_any = cast(Any, ctx)
-    lifespan_context = cast(dict[str, Any], ctx_any.lifespan_context)
-    client = lifespan_context["client"]
+    """Analyze a stock with comprehensive data from MarketSurge.
 
-    stock_task = client.get_stock(symbol)
-    fundamentals_task = client.get_fundamentals(symbol)
-    ownership_task = client.get_ownership(symbol)
+    Fetches stock ratings, fundamentals, and ownership data concurrently.
+    Partial failures in fundamentals or ownership are returned as error messages
+    rather than failing the entire request.
+
+    Args:
+        symbol: Stock ticker symbol, e.g. AAPL, NVDA, TSLA
+    """
+    client = ctx.lifespan_context["client"]
 
     stock_result, fundamentals_result, ownership_result = await asyncio.gather(
-        stock_task,
-        fundamentals_task,
-        ownership_task,
+        client.get_stock(symbol),
+        client.get_fundamentals(symbol),
+        client.get_ownership(symbol),
         return_exceptions=True,
     )
 
@@ -67,24 +37,18 @@ async def analyze_stock(
         from tickerscope_mcp import handle_tickerscope_error
 
         handle_tickerscope_error(stock_result)
-    assert not isinstance(stock_result, Exception)
-
-    stock_data = stock_result.to_dict()
-
-    fundamentals = (
-        fundamentals_result.to_dict()
-        if not isinstance(fundamentals_result, Exception)
-        else {"error": str(fundamentals_result)}
-    )
-    ownership = (
-        ownership_result.to_dict()
-        if not isinstance(ownership_result, Exception)
-        else {"error": str(ownership_result)}
-    )
 
     return {
         "symbol": symbol,
-        "stock": stock_data,
-        "fundamentals": fundamentals,
-        "ownership": ownership,
+        "stock": stock_result.to_dict(),
+        "fundamentals": (
+            fundamentals_result.to_dict()
+            if not isinstance(fundamentals_result, Exception)
+            else {"error": str(fundamentals_result)}
+        ),
+        "ownership": (
+            ownership_result.to_dict()
+            if not isinstance(ownership_result, Exception)
+            else {"error": str(ownership_result)}
+        ),
     }
