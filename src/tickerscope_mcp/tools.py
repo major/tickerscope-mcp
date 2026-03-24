@@ -158,3 +158,18 @@ async def get_watchlist(
         )
     entries = await client.get_watchlist(int(match.id))
     return [entry.to_dict() for entry in entries]
+
+
+@mcp.tool
+async def list_screens(ctx: Context) -> list[dict]:
+    """List saved MarketSurge screens.
+
+    These are user-created screens with filter criteria. Note: to run a
+    predefined MarketSurge screen (like 'IBD 50'), use the run_screen tool instead.
+    """
+    client = ctx.lifespan_context["client"]
+    screens = await client.get_screens()
+    return [
+        {"id": s.id, "name": s.name, "description": s.description, "type": s.type}
+        for s in screens
+    ]

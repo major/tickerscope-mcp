@@ -313,3 +313,42 @@ class TestGetWatchlist:
         await mcp_client.call_tool("get_watchlist", {"name": "My Watchlist"})
 
         mock_client.get_watchlist.assert_called_once_with(123)
+
+
+class TestListScreens:
+    """Tests for list_screens tool behavior."""
+
+    async def test_list_screens_happy_path(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return list of screens with id, name, description, and type."""
+        result = await mcp_client.call_tool("list_screens", {})
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["id"] == "ibd50"
+        assert data[0]["name"] == "IBD 50"
+        assert data[0]["type"] == "PREDEFINED"
+        assert "description" in data[0]
+        assert "filter_criteria" not in data[0]
+
+        mock_client.get_screens.assert_called_once()
+
+    async def test_list_screens_empty(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return empty list when no screens exist."""
+        mock_client.get_screens.return_value = []
+
+        result = await mcp_client.call_tool("list_screens", {})
+
+        if result.content:
+            data = json.loads(cast(Any, result.content[0]).text)
+        else:
+            data = cast(Any, result.structured_content).get("result", [])
+        assert data == []
