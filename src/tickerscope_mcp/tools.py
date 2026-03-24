@@ -117,3 +117,17 @@ async def get_price_history(
         "max_points": max_points,
         **chart_data.to_dict(),
     }
+
+
+@mcp.tool
+async def list_watchlists(ctx: Context) -> list[dict]:
+    """List all MarketSurge watchlists.
+
+    Returns watchlist names and IDs. Use get_watchlist to fetch the contents
+    of a specific watchlist.
+    """
+    client = ctx.lifespan_context["client"]
+    watchlists = await client.get_watchlist_names()
+    return [
+        {"id": w.id, "name": w.name, "description": w.description} for w in watchlists
+    ]

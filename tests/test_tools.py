@@ -212,3 +212,41 @@ class TestGetPriceHistory:
                 "get_price_history",
                 {"symbol": "FAKE", "period": "1M"},
             )
+
+
+class TestListWatchlists:
+    """Tests for list_watchlists tool behavior."""
+
+    async def test_list_watchlists_happy_path(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return list of watchlists with id, name, and description."""
+        result = await mcp_client.call_tool("list_watchlists", {})
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["id"] == "123"
+        assert data[0]["name"] == "My Watchlist"
+        assert "description" in data[0]
+        assert "last_modified" not in data[0]
+
+        mock_client.get_watchlist_names.assert_called_once()
+
+    async def test_list_watchlists_empty(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return empty list when no watchlists exist."""
+        mock_client.get_watchlist_names.return_value = []
+
+        result = await mcp_client.call_tool("list_watchlists", {})
+
+        if result.content:
+            data = json.loads(cast(Any, result.content[0]).text)
+        else:
+            data = cast(Any, result.structured_content).get("result", [])
+        assert data == []
