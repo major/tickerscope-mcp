@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from datetime import date, timedelta
 from typing import Any, cast
 
 import pytest
@@ -20,7 +19,7 @@ class TestAnalyzeStock:
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Return stock, fundamentals, and ownership data for a valid symbol."""
+        """Return stock analysis data for a valid symbol."""
         result = await mcp_client.call_tool("analyze_stock", {"symbol": "AAPL"})
 
         response_text = cast(Any, result.content[0]).text
@@ -29,18 +28,17 @@ class TestAnalyzeStock:
         assert "stock" in data
         assert "fundamentals" in data
         assert "ownership" in data
+        assert data["errors"] == []
 
-        mock_client.get_stock.assert_called_once_with("AAPL")
-        mock_client.get_fundamentals.assert_called_once_with("AAPL")
-        mock_client.get_ownership.assert_called_once_with("AAPL")
+        mock_client.get_stock_analysis.assert_called_once_with("AAPL")
 
     async def test_analyze_stock_symbol_not_found(
         self,
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Raise ToolError when required stock lookup fails with unknown symbol."""
-        mock_client.get_stock.side_effect = SymbolNotFoundError(
+        """Raise ToolError when stock analysis fails with unknown symbol."""
+        mock_client.get_stock_analysis.side_effect = SymbolNotFoundError(
             "not found", symbol="FAKE"
         )
 
@@ -52,10 +50,26 @@ class TestAnalyzeStock:
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Return partial response with explicit error for failed optional section."""
-        mock_client.get_ownership.side_effect = APIError(
-            "ownership failed",
-            errors=[{"message": "ownership endpoint down"}],
+        """Return analysis with errors list when optional sections fail."""
+        from tickerscope import StockAnalysis, StockData
+
+        mock_client.get_stock_analysis.return_value = StockAnalysis(
+            symbol="AAPL",
+            stock=StockData(
+                symbol="AAPL",
+                ratings=None,
+                company=None,
+                pricing=None,
+                financials=None,
+                corporate_actions=None,
+                industry=None,
+                ownership=None,
+                fundamentals=None,
+                patterns=[],
+            ),
+            fundamentals=None,
+            ownership=None,
+            errors=["ownership endpoint down"],
         )
 
         result = await mcp_client.call_tool("analyze_stock", {"symbol": "AAPL"})
@@ -64,9 +78,9 @@ class TestAnalyzeStock:
         data = json.loads(response_text)
         assert data["symbol"] == "AAPL"
         assert "stock" in data
-        assert "fundamentals" in data
-        assert "ownership" in data
-        assert "error" in data["ownership"]
+        assert "fundamentals" not in data  # omitted when None (omit_none=True)
+        assert "ownership" not in data  # omitted when None (omit_none=True)
+        assert data["errors"] == ["ownership endpoint down"]
 
 
 class TestGetPriceHistory:
@@ -92,53 +106,40 @@ class TestGetPriceHistory:
         assert call_kwargs["start_date"] == "2025-01-01"
         assert call_kwargs["end_date"] == "2025-03-01"
 
-    async def test_price_history_period(
+    async def test_price_history_lookback(
         self,
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Call with period='6M', verify computed start_date is ~180 days ago."""
+        """Call with lookback='6M', verify it is passed through to the client."""
         result = await mcp_client.call_tool(
             "get_price_history",
-            {"symbol": "AAPL", "period": "6M"},
+            {"symbol": "AAPL", "lookback": "6M"},
         )
 
         data = json.loads(cast(Any, result.content[0]).text)
         assert data["symbol"] == "AAPL"
+        assert data["lookback"] == "6M"
 
         call_kwargs = mock_client.get_chart_data.call_args.kwargs
-        expected_start = (date.today() - timedelta(days=180)).isoformat()
-        assert call_kwargs["start_date"] == expected_start
-        assert call_kwargs["end_date"] == date.today().isoformat()
+        assert call_kwargs["lookback"] == "6M"
         assert call_kwargs["max_points"] == 500
 
-    @pytest.mark.parametrize(
-        ("period", "expected_days"),
-        [
-            ("1W", 7),
-            ("1M", 30),
-            ("3M", 90),
-            ("6M", 180),
-            ("1Y", 365),
-        ],
-    )
-    async def test_price_history_all_periods(
+    @pytest.mark.parametrize("lookback", ["1W", "1M", "3M", "6M", "1Y", "YTD"])
+    async def test_price_history_all_lookbacks(
         self,
         mcp_client: Client,
         mock_client,
-        period: str,
-        expected_days: int,
+        lookback: str,
     ) -> None:
-        """All supported periods parse to the correct number of days."""
+        """All supported lookback values are passed through to the client."""
         await mcp_client.call_tool(
             "get_price_history",
-            {"symbol": "AAPL", "period": period},
+            {"symbol": "AAPL", "lookback": lookback},
         )
 
         call_kwargs = mock_client.get_chart_data.call_args.kwargs
-        expected_start = (date.today() - timedelta(days=expected_days)).isoformat()
-        assert call_kwargs["start_date"] == expected_start
-        assert call_kwargs["end_date"] == date.today().isoformat()
+        assert call_kwargs["lookback"] == lookback
 
     async def test_price_history_max_points(
         self,
@@ -148,7 +149,7 @@ class TestGetPriceHistory:
         """Custom max_points=100 is passed through to the client."""
         await mcp_client.call_tool(
             "get_price_history",
-            {"symbol": "AAPL", "period": "1M", "max_points": 100},
+            {"symbol": "AAPL", "lookback": "1M", "max_points": 100},
         )
 
         call_kwargs = mock_client.get_chart_data.call_args.kwargs
@@ -162,36 +163,44 @@ class TestGetPriceHistory:
         """Default max_points=500 is used when not specified."""
         await mcp_client.call_tool(
             "get_price_history",
-            {"symbol": "AAPL", "period": "1M"},
+            {"symbol": "AAPL", "lookback": "1M"},
         )
 
         call_kwargs = mock_client.get_chart_data.call_args.kwargs
         assert call_kwargs["max_points"] == 500
 
-    async def test_price_history_validation_both(
+    async def test_price_history_validation_conflict(
         self,
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Raise ToolError when both dates and period are provided."""
-        with pytest.raises(ToolError, match="not both"):
+        """Raise ToolError when both lookback and dates are provided."""
+        mock_client.get_chart_data.side_effect = ValueError(
+            "lookback cannot be combined with start_date"
+        )
+
+        with pytest.raises(ToolError, match="lookback cannot be combined"):
             await mcp_client.call_tool(
                 "get_price_history",
                 {
                     "symbol": "AAPL",
                     "start_date": "2025-01-01",
                     "end_date": "2025-03-01",
-                    "period": "6M",
+                    "lookback": "6M",
                 },
             )
 
-    async def test_price_history_validation_neither(
+    async def test_price_history_validation_missing(
         self,
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Raise ToolError when neither dates nor period are provided."""
-        with pytest.raises(ToolError, match="start_date and end_date"):
+        """Raise ToolError when neither dates nor lookback are provided."""
+        mock_client.get_chart_data.side_effect = ValueError(
+            "either lookback or start_date and end_date must be provided"
+        )
+
+        with pytest.raises(ToolError, match="lookback or start_date"):
             await mcp_client.call_tool(
                 "get_price_history",
                 {"symbol": "AAPL"},
@@ -210,7 +219,7 @@ class TestGetPriceHistory:
         with pytest.raises(ToolError, match="not found"):
             await mcp_client.call_tool(
                 "get_price_history",
-                {"symbol": "FAKE", "period": "1M"},
+                {"symbol": "FAKE", "lookback": "1M"},
             )
 
 
@@ -228,7 +237,7 @@ class TestListWatchlists:
         data = json.loads(cast(Any, result.content[0]).text)
         assert isinstance(data, list)
         assert len(data) == 1
-        assert data[0]["id"] == "123"
+        assert data[0]["id"] == 123
         assert data[0]["name"] == "My Watchlist"
         assert "description" in data[0]
         assert "last_modified" not in data[0]
@@ -261,7 +270,7 @@ class TestGetWatchlist:
         mock_client,
     ) -> None:
         """Return enriched watchlist entries with to_dict() serialization."""
-        mock_client.get_watchlist.return_value = [
+        mock_client.screen_watchlist_by_name.return_value = [
             WatchlistEntry(
                 symbol="AAPL",
                 company_name="Apple Inc",
@@ -292,8 +301,7 @@ class TestGetWatchlist:
         assert data[0]["company_name"] == "Apple Inc"
         assert data[0]["composite_rating"] == 95
 
-        mock_client.get_watchlist_names.assert_called_once()
-        mock_client.get_watchlist.assert_called_once_with(123)
+        mock_client.screen_watchlist_by_name.assert_called_once_with("My Watchlist")
 
     async def test_get_watchlist_not_found(
         self,
@@ -301,18 +309,12 @@ class TestGetWatchlist:
         mock_client,
     ) -> None:
         """Raise ToolError when watchlist name does not match any known watchlist."""
-        with pytest.raises(ToolError, match="not found"):
+        mock_client.screen_watchlist_by_name.side_effect = APIError(
+            "No watchlist found with name 'Nonexistent'"
+        )
+
+        with pytest.raises(ToolError, match="API error"):
             await mcp_client.call_tool("get_watchlist", {"name": "Nonexistent"})
-
-    async def test_get_watchlist_id_conversion(
-        self,
-        mcp_client: Client,
-        mock_client,
-    ) -> None:
-        """Convert string ID '123' from WatchlistSummary to int 123 for get_watchlist call."""
-        await mcp_client.call_tool("get_watchlist", {"name": "My Watchlist"})
-
-        mock_client.get_watchlist.assert_called_once_with(123)
 
 
 class TestListScreens:

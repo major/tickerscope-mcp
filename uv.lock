@@ -1286,15 +1286,31 @@ wheels = [
 [[package]]
 name = "tickerscope"
 version = "0.1.1"
-source = { registry = "https://pypi.org/simple" }
+source = { directory = "/home/major/git/major/tickerscope" }
 dependencies = [
     { name = "httpx" },
     { name = "mashumaro" },
     { name = "rookiepy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/f0/1f5664876f4c7b6f99f297cbcf8ae3ca2ebaf579ef3451ce6c2d3371cce5/tickerscope-0.1.1.tar.gz", hash = "sha256:b1af4f5a7bc1845d4afba423247f0f8a53818f77898fbf7d29ce217152726b04", size = 29065, upload-time = "2026-03-24T15:09:34.915Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/61/f7ce505a415dea5c25fffe5f738f8f2e280a34811f8e7f73ff507246aa09/tickerscope-0.1.1-py3-none-any.whl", hash = "sha256:d968ced76aa6ad2f9df9db8a21a94dd31e2c70b2df4bd1be8d9ae471d3d7a1dd", size = 37091, upload-time = "2026-03-24T15:09:33.555Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "mashumaro", specifier = ">=3.20" },
+    { name = "rookiepy", specifier = ">=0.5.6" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8" },
+    { name = "pytest-asyncio", specifier = ">=0.23" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "pytest-randomly", specifier = ">=4.0.1" },
+    { name = "radon", specifier = ">=6.0.1" },
+    { name = "respx", specifier = ">=0.21" },
+    { name = "ruff", specifier = ">=0.15.7" },
+    { name = "ty", specifier = ">=0.0.24" },
+    { name = "vulture", specifier = ">=2.15" },
 ]
 
 [[package]]
@@ -1321,7 +1337,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastmcp", specifier = ">=3.1.1" },
-    { name = "tickerscope" },
+    { name = "tickerscope", directory = "/home/major/git/major/tickerscope" },
 ]
 
 [package.metadata.requires-dev]

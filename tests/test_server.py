@@ -11,6 +11,7 @@ from tickerscope import (
     APIError,
     AsyncTickerScopeClient,
     CookieExtractionError,
+    HTTPError,
     SymbolNotFoundError,
     TokenExpiredError,
 )
@@ -40,10 +41,19 @@ class TestErrorMapping:
             handle_tickerscope_error(exc)
 
     async def test_api_error(self) -> None:
-        """Test APIError maps to ToolError with error details."""
-        errors = [{"message": "invalid query"}]
-        exc = APIError("api failed", errors=errors)
-        with pytest.raises(ToolError, match="API error"):
+        """Test APIError maps to ToolError with error message."""
+        exc = APIError("api failed", errors=[{"message": "invalid query"}])
+        with pytest.raises(ToolError, match="api failed"):
+            handle_tickerscope_error(exc)
+
+    async def test_http_error(self) -> None:
+        """Test HTTPError maps to ToolError with status code and message."""
+        exc = HTTPError(
+            status_code=429,
+            response_body="rate limited",
+            message="Too many requests",
+        )
+        with pytest.raises(ToolError, match="429"):
             handle_tickerscope_error(exc)
 
 

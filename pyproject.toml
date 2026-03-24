@@ -5,7 +5,10 @@ description = "MCP server for MarketSurge financial data via TickerScope"
 readme = "README.md"
 authors = [{ name = "Major Hayden", email = "major@mhtx.net" }]
 requires-python = ">=3.12"
-dependencies = ["fastmcp>=3.1.1", "tickerscope"]
+dependencies = [
+    "fastmcp>=3.1.1",
+    "tickerscope @ file:///home/major/git/major/tickerscope",
+]
 
 [project.scripts]
 tickerscope-mcp = "tickerscope_mcp:main"

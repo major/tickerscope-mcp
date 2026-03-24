@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
-from datetime import date, timedelta
 from typing import Annotated
 
 from fastmcp import Context
 from fastmcp.exceptions import ToolError
 
 from tickerscope_mcp import mcp
-
-PERIOD_DAYS = {"1W": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365}
 
 
 @mcp.tool
@@ -22,40 +18,22 @@ async def analyze_stock(
     """Analyze a stock with comprehensive data from MarketSurge.
 
     Fetches stock ratings, fundamentals, and ownership data concurrently.
-    Partial failures in fundamentals or ownership are returned as error messages
-    rather than failing the entire request.
+    Partial failures in fundamentals or ownership are returned in the errors
+    list rather than failing the entire request.
 
     Args:
         symbol: Stock ticker symbol, e.g. AAPL, NVDA, TSLA
     """
     client = ctx.lifespan_context["client"]
-
-    stock_result, fundamentals_result, ownership_result = await asyncio.gather(
-        client.get_stock(symbol),
-        client.get_fundamentals(symbol),
-        client.get_ownership(symbol),
-        return_exceptions=True,
-    )
-
-    if isinstance(stock_result, Exception):
+    try:
+        analysis = await client.get_stock_analysis(symbol)
+    except Exception as exc:
         from tickerscope_mcp import handle_tickerscope_error
 
-        handle_tickerscope_error(stock_result)
+        handle_tickerscope_error(exc)
+        raise  # unreachable: handle_tickerscope_error always raises ToolError
 
-    return {
-        "symbol": symbol,
-        "stock": stock_result.to_dict(),
-        "fundamentals": (
-            fundamentals_result.to_dict()
-            if not isinstance(fundamentals_result, Exception)
-            else {"error": str(fundamentals_result)}
-        ),
-        "ownership": (
-            ownership_result.to_dict()
-            if not isinstance(ownership_result, Exception)
-            else {"error": str(ownership_result)}
-        ),
-    }
+    return analysis.to_dict()
 
 
 @mcp.tool
@@ -70,40 +48,27 @@ async def get_price_history(
         str | None,
         "End date in ISO format (YYYY-MM-DD). Use with start_date.",
     ] = None,
-    period: Annotated[
+    lookback: Annotated[
         str | None,
-        "Relative period: 1W, 1M, 3M, 6M, or 1Y. Cannot be used with start_date/end_date.",
+        "Relative lookback period: 1W, 1M, 3M, 6M, 1Y, or YTD. Cannot be used with start_date/end_date.",
     ] = None,
     max_points: Annotated[int, "Maximum number of data points to return."] = 500,
 ) -> dict:
     """Fetch OHLCV price history for a stock from MarketSurge.
 
-    Provide either (start_date + end_date) or period, not both.
+    Provide either (start_date + end_date) or lookback, not both.
     """
-    if period and (start_date or end_date):
-        raise ToolError("Provide either period OR start_date/end_date, not both.")
-    if not period and not (start_date and end_date):
-        raise ToolError(
-            "Provide either period (e.g. '6M') or both start_date and end_date."
-        )
-
-    if period:
-        if period not in PERIOD_DAYS:
-            raise ToolError(
-                f"Invalid period '{period}'. Use one of: {', '.join(PERIOD_DAYS)}"
-            )
-        today = date.today()
-        end_date = today.isoformat()
-        start_date = (today - timedelta(days=PERIOD_DAYS[period])).isoformat()
-
     client = ctx.lifespan_context["client"]
     try:
         chart_data = await client.get_chart_data(
             symbol,
             start_date=start_date,
             end_date=end_date,
+            lookback=lookback,
             max_points=max_points,
         )
+    except ValueError as exc:
+        raise ToolError(str(exc))
     except Exception as exc:
         from tickerscope_mcp import handle_tickerscope_error
 
@@ -114,6 +79,7 @@ async def get_price_history(
         "symbol": symbol,
         "start_date": start_date,
         "end_date": end_date,
+        "lookback": lookback,
         "max_points": max_points,
         **chart_data.to_dict(),
     }
@@ -150,13 +116,14 @@ async def get_watchlist(
         name: Watchlist name. Use list_watchlists to see available names.
     """
     client = ctx.lifespan_context["client"]
-    watchlists = await client.get_watchlist_names()
-    match = next((w for w in watchlists if w.name == name), None)
-    if match is None:
-        raise ToolError(
-            f"Watchlist '{name}' not found. Use list_watchlists to see available names."
-        )
-    entries = await client.get_watchlist(int(match.id))
+    try:
+        entries = await client.screen_watchlist_by_name(name)
+    except Exception as exc:
+        from tickerscope_mcp import handle_tickerscope_error
+
+        handle_tickerscope_error(exc)
+        raise  # unreachable: handle_tickerscope_error always raises ToolError
+
     return [entry.to_dict() for entry in entries]
 
 

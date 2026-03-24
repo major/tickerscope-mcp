@@ -13,6 +13,7 @@ from tickerscope import (
     OwnershipData,
     Screen,
     ScreenResult,
+    StockAnalysis,
     StockData,
     WatchlistSummary,
 )
@@ -25,13 +26,12 @@ def mock_client() -> AsyncMock:
     """Create a mocked AsyncTickerScopeClient with pre-configured return values.
 
     Returns:
-        AsyncMock: Mocked client with spec=AsyncTickerScopeClient and all 6 tool
+        AsyncMock: Mocked client with spec=AsyncTickerScopeClient and tool
                    methods configured with minimal but valid dataclass instances.
     """
     client = AsyncMock(spec=AsyncTickerScopeClient)
 
-    # Configure return values for all 6 tool paths
-    client.get_stock.return_value = StockData(
+    stock = StockData(
         symbol="AAPL",
         ratings=None,
         company=None,
@@ -44,19 +44,23 @@ def mock_client() -> AsyncMock:
         patterns=[],
     )
 
-    client.get_fundamentals.return_value = FundamentalData(
+    client.get_stock_analysis.return_value = StockAnalysis(
         symbol="AAPL",
-        company_name=None,
-        reported_earnings=[],
-        reported_sales=[],
-        eps_estimates=[],
-        sales_estimates=[],
-    )
-
-    client.get_ownership.return_value = OwnershipData(
-        symbol="AAPL",
-        funds_float_pct=None,
-        quarterly_funds=[],
+        stock=stock,
+        fundamentals=FundamentalData(
+            symbol="AAPL",
+            company_name=None,
+            reported_earnings=[],
+            reported_sales=[],
+            eps_estimates=[],
+            sales_estimates=[],
+        ),
+        ownership=OwnershipData(
+            symbol="AAPL",
+            funds_float_pct=None,
+            quarterly_funds=[],
+        ),
+        errors=[],
     )
 
     client.get_chart_data.return_value = ChartData(
@@ -71,14 +75,14 @@ def mock_client() -> AsyncMock:
 
     client.get_watchlist_names.return_value = [
         WatchlistSummary(
-            id="123",
+            id=123,
             name="My Watchlist",
             last_modified=None,
             description=None,
         )
     ]
 
-    client.get_watchlist.return_value = []
+    client.screen_watchlist_by_name.return_value = []
 
     client.get_screens.return_value = [
         Screen(

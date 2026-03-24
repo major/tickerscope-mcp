@@ -10,6 +10,7 @@ from tickerscope import (
     APIError,
     AsyncTickerScopeClient,
     CookieExtractionError,
+    HTTPError,
     SymbolNotFoundError,
     TokenExpiredError,
 )
@@ -64,9 +65,10 @@ def handle_tickerscope_error(exc: Exception) -> None:
             "No browser cookies found. "
             "Log into MarketSurge at marketsurge.investors.com in Firefox or Chrome first."
         )
+    if isinstance(exc, HTTPError):
+        raise ToolError(f"MarketSurge HTTP {exc.status_code} error: {exc.message}")
     if isinstance(exc, APIError):
-        errors = getattr(exc, "errors", [])
-        raise ToolError(f"MarketSurge API error: {errors}")
+        raise ToolError(f"MarketSurge API error: {exc}")
     raise ToolError(f"Unexpected error: {exc}")
 
 
