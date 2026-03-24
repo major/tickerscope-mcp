@@ -131,3 +131,30 @@ async def list_watchlists(ctx: Context) -> list[dict]:
     return [
         {"id": w.id, "name": w.name, "description": w.description} for w in watchlists
     ]
+
+
+@mcp.tool
+async def get_watchlist(
+    name: Annotated[
+        str,
+        "Watchlist name, e.g. 'Growth Stocks'. Use list_watchlists to see available names.",
+    ],
+    ctx: Context,
+) -> list[dict]:
+    """Fetch enriched stock data for all symbols in a MarketSurge watchlist.
+
+    Looks up the watchlist by name, then fetches enriched data including
+    ratings, prices, and industry information for each symbol.
+
+    Args:
+        name: Watchlist name. Use list_watchlists to see available names.
+    """
+    client = ctx.lifespan_context["client"]
+    watchlists = await client.get_watchlist_names()
+    match = next((w for w in watchlists if w.name == name), None)
+    if match is None:
+        raise ToolError(
+            f"Watchlist '{name}' not found. Use list_watchlists to see available names."
+        )
+    entries = await client.get_watchlist(int(match.id))
+    return [entry.to_dict() for entry in entries]

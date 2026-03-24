@@ -9,7 +9,7 @@ from typing import Any, cast
 import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
-from tickerscope import APIError, SymbolNotFoundError  # type: ignore[reportMissingImports]
+from tickerscope import APIError, SymbolNotFoundError, WatchlistEntry  # type: ignore[reportMissingImports]
 
 
 class TestAnalyzeStock:
@@ -250,3 +250,66 @@ class TestListWatchlists:
         else:
             data = cast(Any, result.structured_content).get("result", [])
         assert data == []
+
+
+class TestGetWatchlist:
+    """Tests for get_watchlist tool behavior and error handling."""
+
+    async def test_get_watchlist_enriched(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return enriched watchlist entries with to_dict() serialization."""
+        mock_client.get_watchlist.return_value = [
+            WatchlistEntry(
+                symbol="AAPL",
+                company_name="Apple Inc",
+                list_rank=1,
+                price=150.0,
+                price_net_change=2.5,
+                price_pct_change=1.7,
+                price_pct_off_52w_high=-5.0,
+                volume=1000000,
+                volume_change=50000,
+                volume_pct_change=5.0,
+                composite_rating=95,
+                eps_rating=90,
+                rs_rating=88,
+                acc_dis_rating="A",
+                smr_rating="A",
+                industry_group_rank=10,
+                industry_name="Technology",
+            )
+        ]
+
+        result = await mcp_client.call_tool("get_watchlist", {"name": "My Watchlist"})
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["symbol"] == "AAPL"
+        assert data[0]["company_name"] == "Apple Inc"
+        assert data[0]["composite_rating"] == 95
+
+        mock_client.get_watchlist_names.assert_called_once()
+        mock_client.get_watchlist.assert_called_once_with(123)
+
+    async def test_get_watchlist_not_found(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Raise ToolError when watchlist name does not match any known watchlist."""
+        with pytest.raises(ToolError, match="not found"):
+            await mcp_client.call_tool("get_watchlist", {"name": "Nonexistent"})
+
+    async def test_get_watchlist_id_conversion(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Convert string ID '123' from WatchlistSummary to int 123 for get_watchlist call."""
+        await mcp_client.call_tool("get_watchlist", {"name": "My Watchlist"})
+
+        mock_client.get_watchlist.assert_called_once_with(123)
