@@ -6,14 +6,17 @@ from typing import Annotated, Any, Callable, cast
 
 from fastmcp import Context
 from fastmcp.tools import tool as _tool
+from mcp.types import ToolAnnotations
 
 from tickerscope_mcp.errors import handle_tool_errors
 
 tool = cast(Callable[..., Any], _tool)
 
+_STOCK_ANNOTATIONS = ToolAnnotations(readOnlyHint=True, idempotentHint=True)
+
 
 @handle_tool_errors
-@tool
+@tool(annotations=_STOCK_ANNOTATIONS, tags={"stocks"}, timeout=60.0)
 async def analyze_stock(
     symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,
@@ -33,7 +36,7 @@ async def analyze_stock(
 
 
 @handle_tool_errors
-@tool
+@tool(annotations=_STOCK_ANNOTATIONS, tags={"stocks"}, timeout=60.0)
 async def get_stock(
     symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,
@@ -52,7 +55,7 @@ async def get_stock(
 
 
 @handle_tool_errors
-@tool
+@tool(annotations=_STOCK_ANNOTATIONS, tags={"stocks"}, timeout=60.0)
 async def get_fundamentals(
     symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,
@@ -71,7 +74,7 @@ async def get_fundamentals(
 
 
 @handle_tool_errors
-@tool
+@tool(annotations=_STOCK_ANNOTATIONS, tags={"stocks"}, timeout=60.0)
 async def get_ownership(
     symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,

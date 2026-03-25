@@ -6,14 +6,17 @@ from typing import Annotated, Any, Callable, cast
 
 from fastmcp import Context
 from fastmcp.tools import tool as _tool
+from mcp.types import ToolAnnotations
 
 from tickerscope_mcp.errors import handle_tool_errors
 
 tool = cast(Callable[..., Any], _tool)
 
+_LIST_ANNOTATIONS = ToolAnnotations(readOnlyHint=True, idempotentHint=True)
+
 
 @handle_tool_errors
-@tool
+@tool(annotations=_LIST_ANNOTATIONS, tags={"lists"}, timeout=60.0)
 async def list_watchlists(ctx: Context) -> list[dict]:
     """List all MarketSurge watchlists.
 
@@ -28,7 +31,7 @@ async def list_watchlists(ctx: Context) -> list[dict]:
 
 
 @handle_tool_errors
-@tool
+@tool(annotations=_LIST_ANNOTATIONS, tags={"lists"}, timeout=60.0)
 async def get_watchlist(
     name: Annotated[
         str,
@@ -50,7 +53,7 @@ async def get_watchlist(
 
 
 @handle_tool_errors
-@tool
+@tool(annotations=_LIST_ANNOTATIONS, tags={"lists"}, timeout=60.0)
 async def list_screens(ctx: Context) -> list[dict]:
     """List saved MarketSurge screens.
 
@@ -66,7 +69,7 @@ async def list_screens(ctx: Context) -> list[dict]:
 
 
 @handle_tool_errors
-@tool
+@tool(annotations=_LIST_ANNOTATIONS, tags={"lists"}, timeout=60.0)
 async def run_screen(
     screen_name: Annotated[
         str,

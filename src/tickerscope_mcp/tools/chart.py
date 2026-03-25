@@ -6,14 +6,17 @@ from typing import Annotated, Any, Callable, cast
 
 from fastmcp import Context
 from fastmcp.tools import tool as _tool
+from mcp.types import ToolAnnotations
 
 from tickerscope_mcp.errors import handle_tool_errors
 
 tool = cast(Callable[..., Any], _tool)
 
+_CHART_ANNOTATIONS = ToolAnnotations(readOnlyHint=True, idempotentHint=True)
+
 
 @handle_tool_errors
-@tool
+@tool(annotations=_CHART_ANNOTATIONS, tags={"charts"}, timeout=60.0)
 async def get_price_history(
     symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,
