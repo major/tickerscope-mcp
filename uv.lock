@@ -1322,7 +1322,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastmcp", specifier = ">=3.1.1" },
+    { name = "fastmcp", specifier = ">=3.1.1,<4" },
     { name = "tickerscope", directory = "/home/major/git/major/tickerscope" },
 ]
 
