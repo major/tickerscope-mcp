@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastmcp import Client
+from fastmcp import Client, FastMCP
 from tickerscope import (
     AsyncTickerScopeClient,
     ChartData,
@@ -116,7 +116,7 @@ def mock_client() -> AsyncMock:
 
 
 @pytest.fixture
-def mcp_server() -> object:
+def mcp_server() -> FastMCP:
     """Return the FastMCP server instance.
 
     Returns:
@@ -126,7 +126,7 @@ def mcp_server() -> object:
 
 
 @pytest.fixture
-async def mcp_client(mock_client: AsyncMock, mcp_server: object) -> Client:
+async def mcp_client(mock_client: AsyncMock, mcp_server: FastMCP) -> Client:
     """Create an MCP client with mocked AsyncTickerScopeClient.
 
     Injects the mock_client via patch.object so that when the server's
