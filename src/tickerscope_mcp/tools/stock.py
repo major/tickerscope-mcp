@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any, Callable, cast
 
 from fastmcp import Context
+from fastmcp.tools import tool as _tool
 
-from tickerscope_mcp import mcp
+from tickerscope_mcp.errors import handle_tool_errors
+
+tool = cast(Callable[..., Any], _tool)
 
 
-@mcp.tool
+@handle_tool_errors
+@tool
 async def analyze_stock(
     symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,
@@ -23,19 +27,13 @@ async def analyze_stock(
     Args:
         symbol: Stock ticker symbol, e.g. AAPL, NVDA, TSLA
     """
-    client = ctx.lifespan_context["client"]
-    try:
-        analysis = await client.get_stock_analysis(symbol)
-    except Exception as exc:
-        from tickerscope_mcp import handle_tickerscope_error
-
-        handle_tickerscope_error(exc)
-        raise  # unreachable: handle_tickerscope_error always raises ToolError
-
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    analysis = await client.get_stock_analysis(symbol)
     return analysis.to_dict()
 
 
-@mcp.tool
+@handle_tool_errors
+@tool
 async def get_stock(
     symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,
@@ -48,19 +46,13 @@ async def get_stock(
     Args:
         symbol: Stock ticker symbol, e.g. AAPL, NVDA, TSLA
     """
-    client = ctx.lifespan_context["client"]
-    try:
-        result = await client.get_stock(symbol)
-    except Exception as exc:
-        from tickerscope_mcp import handle_tickerscope_error
-
-        handle_tickerscope_error(exc)
-        raise  # unreachable: handle_tickerscope_error always raises ToolError
-
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    result = await client.get_stock(symbol)
     return result.to_dict()
 
 
-@mcp.tool
+@handle_tool_errors
+@tool
 async def get_fundamentals(
     symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,
@@ -73,19 +65,13 @@ async def get_fundamentals(
     Args:
         symbol: Stock ticker symbol, e.g. AAPL, NVDA, TSLA
     """
-    client = ctx.lifespan_context["client"]
-    try:
-        result = await client.get_fundamentals(symbol)
-    except Exception as exc:
-        from tickerscope_mcp import handle_tickerscope_error
-
-        handle_tickerscope_error(exc)
-        raise  # unreachable: handle_tickerscope_error always raises ToolError
-
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    result = await client.get_fundamentals(symbol)
     return result.to_dict()
 
 
-@mcp.tool
+@handle_tool_errors
+@tool
 async def get_ownership(
     symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,
@@ -98,13 +84,6 @@ async def get_ownership(
     Args:
         symbol: Stock ticker symbol, e.g. AAPL, NVDA, TSLA
     """
-    client = ctx.lifespan_context["client"]
-    try:
-        result = await client.get_ownership(symbol)
-    except Exception as exc:
-        from tickerscope_mcp import handle_tickerscope_error
-
-        handle_tickerscope_error(exc)
-        raise  # unreachable: handle_tickerscope_error always raises ToolError
-
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    result = await client.get_ownership(symbol)
     return result.to_dict()

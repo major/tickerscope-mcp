@@ -2,28 +2,33 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any, Callable, cast
 
 from fastmcp import Context
+from fastmcp.tools import tool as _tool
 
-from tickerscope_mcp import mcp
+from tickerscope_mcp.errors import handle_tool_errors
+
+tool = cast(Callable[..., Any], _tool)
 
 
-@mcp.tool
+@handle_tool_errors
+@tool
 async def list_watchlists(ctx: Context) -> list[dict]:
     """List all MarketSurge watchlists.
 
     Returns watchlist names and IDs. Use get_watchlist to fetch the contents
     of a specific watchlist.
     """
-    client = ctx.lifespan_context["client"]
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
     watchlists = await client.get_watchlist_names()
     return [
         {"id": w.id, "name": w.name, "description": w.description} for w in watchlists
     ]
 
 
-@mcp.tool
+@handle_tool_errors
+@tool
 async def get_watchlist(
     name: Annotated[
         str,
@@ -39,26 +44,20 @@ async def get_watchlist(
     Args:
         name: Watchlist name. Use list_watchlists to see available names.
     """
-    client = ctx.lifespan_context["client"]
-    try:
-        entries = await client.screen_watchlist_by_name(name)
-    except Exception as exc:
-        from tickerscope_mcp import handle_tickerscope_error
-
-        handle_tickerscope_error(exc)
-        raise  # unreachable: handle_tickerscope_error always raises ToolError
-
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    entries = await client.screen_watchlist_by_name(name)
     return [entry.to_dict() for entry in entries]
 
 
-@mcp.tool
+@handle_tool_errors
+@tool
 async def list_screens(ctx: Context) -> list[dict]:
     """List saved MarketSurge screens.
 
     These are user-created screens with filter criteria. Note: to run a
     predefined MarketSurge screen (like 'IBD 50'), use the run_screen tool instead.
     """
-    client = ctx.lifespan_context["client"]
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
     screens = await client.get_screens()
     return [
         {"id": s.id, "name": s.name, "description": s.description, "type": s.type}
@@ -66,7 +65,8 @@ async def list_screens(ctx: Context) -> list[dict]:
     ]
 
 
-@mcp.tool
+@handle_tool_errors
+@tool
 async def run_screen(
     screen_name: Annotated[
         str,
@@ -86,14 +86,8 @@ async def run_screen(
     Note: this runs predefined MarketSurge screens, not user-saved screens.
     Use list_screens to view user-saved screens.
     """
-    client = ctx.lifespan_context["client"]
-    try:
-        result = await client.run_screen(screen_name, parameters or [])
-    except Exception as exc:
-        from tickerscope_mcp import handle_tickerscope_error
-
-        handle_tickerscope_error(exc)
-        raise  # unreachable: handle_tickerscope_error always raises ToolError
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    result = await client.run_screen(screen_name, parameters or [])
     return {
         "screen_name": result.screen_name,
         "num_instruments": result.num_instruments,

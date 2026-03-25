@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any, Callable, cast
 
 from fastmcp import Context
-from fastmcp.exceptions import ToolError
+from fastmcp.tools import tool as _tool
 
-from tickerscope_mcp import mcp
+from tickerscope_mcp.errors import handle_tool_errors
+
+tool = cast(Callable[..., Any], _tool)
 
 
-@mcp.tool
+@handle_tool_errors
+@tool
 async def get_price_history(
     symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
     ctx: Context,
@@ -32,22 +35,14 @@ async def get_price_history(
 
     Provide either (start_date + end_date) or lookback, not both.
     """
-    client = ctx.lifespan_context["client"]
-    try:
-        chart_data = await client.get_chart_data(
-            symbol,
-            start_date=start_date,
-            end_date=end_date,
-            lookback=lookback,
-            max_points=max_points,
-        )
-    except ValueError as exc:
-        raise ToolError(str(exc))
-    except Exception as exc:
-        from tickerscope_mcp import handle_tickerscope_error
-
-        handle_tickerscope_error(exc)
-        raise  # unreachable: handle_tickerscope_error always raises ToolError
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    chart_data = await client.get_chart_data(
+        symbol,
+        start_date=start_date,
+        end_date=end_date,
+        lookback=lookback,
+        max_points=max_points,
+    )
 
     return {
         "symbol": symbol,
