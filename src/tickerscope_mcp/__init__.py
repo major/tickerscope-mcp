@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.server.providers import FileSystemProvider  # pyright: ignore[reportMissingImports]
@@ -37,19 +35,6 @@ mcp = FastMCP(  # pyright: ignore[reportCallIssue]
         "Always provide accurate ticker symbols and handle errors gracefully."
     ),
 )
-
-
-class _ToolManagerCompat:
-    def __init__(self, app: FastMCP) -> None:
-        self._app = app
-
-    @property
-    def tools(self) -> dict[str, Any]:
-        tool_list = asyncio.run(self._app.list_tools())  # pyright: ignore[reportAttributeAccessIssue]
-        return {tool.name: tool for tool in tool_list}
-
-
-mcp._tool_manager = _ToolManagerCompat(mcp)  # type: ignore[attr-defined]
 
 
 def main() -> None:
