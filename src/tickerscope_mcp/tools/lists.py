@@ -94,4 +94,9 @@ async def run_screen(
 
         handle_tickerscope_error(exc)
         raise  # unreachable: handle_tickerscope_error always raises ToolError
-    return result.to_dict()
+    return {
+        "screen_name": result.screen_name,
+        "num_instruments": result.num_instruments,
+        "elapsed_time": result.elapsed_time,
+        "rows": result.rows,
+    }
