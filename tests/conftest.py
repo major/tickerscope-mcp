@@ -44,24 +44,32 @@ def mock_client() -> AsyncMock:
         patterns=[],
     )
 
+    fundamentals = FundamentalData(
+        symbol="AAPL",
+        company_name=None,
+        reported_earnings=[],
+        reported_sales=[],
+        eps_estimates=[],
+        sales_estimates=[],
+    )
+
+    ownership = OwnershipData(
+        symbol="AAPL",
+        funds_float_pct=None,
+        quarterly_funds=[],
+    )
+
     client.get_stock_analysis.return_value = StockAnalysis(
         symbol="AAPL",
         stock=stock,
-        fundamentals=FundamentalData(
-            symbol="AAPL",
-            company_name=None,
-            reported_earnings=[],
-            reported_sales=[],
-            eps_estimates=[],
-            sales_estimates=[],
-        ),
-        ownership=OwnershipData(
-            symbol="AAPL",
-            funds_float_pct=None,
-            quarterly_funds=[],
-        ),
+        fundamentals=fundamentals,
+        ownership=ownership,
         errors=[],
     )
+
+    client.get_stock.return_value = stock
+    client.get_fundamentals.return_value = fundamentals
+    client.get_ownership.return_value = ownership
 
     client.get_chart_data.return_value = ChartData(
         symbol="AAPL",

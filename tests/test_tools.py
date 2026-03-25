@@ -406,3 +406,96 @@ class TestRunScreen:
 
         with pytest.raises(ToolError, match="API error"):
             await mcp_client.call_tool("run_screen", {"screen_name": "INVALID"})
+
+
+class TestGetStock:
+    """Tests for get_stock tool behavior and error handling."""
+
+    async def test_get_stock_happy_path(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return stock data for a valid symbol."""
+        result = await mcp_client.call_tool("get_stock", {"symbol": "AAPL"})
+
+        response_text = cast(Any, result.content[0]).text
+        data = json.loads(response_text)
+        assert data["symbol"] == "AAPL"
+
+        mock_client.get_stock.assert_called_once_with("AAPL")
+
+    async def test_get_stock_symbol_not_found(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Raise ToolError when symbol is not found."""
+        mock_client.get_stock.side_effect = SymbolNotFoundError(
+            "not found", symbol="FAKE"
+        )
+
+        with pytest.raises(ToolError, match="not found"):
+            await mcp_client.call_tool("get_stock", {"symbol": "FAKE"})
+
+
+class TestGetFundamentals:
+    """Tests for get_fundamentals tool behavior and error handling."""
+
+    async def test_get_fundamentals_happy_path(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return fundamentals data for a valid symbol."""
+        result = await mcp_client.call_tool("get_fundamentals", {"symbol": "AAPL"})
+
+        response_text = cast(Any, result.content[0]).text
+        data = json.loads(response_text)
+        assert data["symbol"] == "AAPL"
+
+        mock_client.get_fundamentals.assert_called_once_with("AAPL")
+
+    async def test_get_fundamentals_symbol_not_found(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Raise ToolError when symbol is not found."""
+        mock_client.get_fundamentals.side_effect = SymbolNotFoundError(
+            "not found", symbol="FAKE"
+        )
+
+        with pytest.raises(ToolError, match="not found"):
+            await mcp_client.call_tool("get_fundamentals", {"symbol": "FAKE"})
+
+
+class TestGetOwnership:
+    """Tests for get_ownership tool behavior and error handling."""
+
+    async def test_get_ownership_happy_path(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return ownership data for a valid symbol."""
+        result = await mcp_client.call_tool("get_ownership", {"symbol": "AAPL"})
+
+        response_text = cast(Any, result.content[0]).text
+        data = json.loads(response_text)
+        assert data["symbol"] == "AAPL"
+
+        mock_client.get_ownership.assert_called_once_with("AAPL")
+
+    async def test_get_ownership_symbol_not_found(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Raise ToolError when symbol is not found."""
+        mock_client.get_ownership.side_effect = SymbolNotFoundError(
+            "not found", symbol="FAKE"
+        )
+
+        with pytest.raises(ToolError, match="not found"):
+            await mcp_client.call_tool("get_ownership", {"symbol": "FAKE"})
