@@ -97,3 +97,49 @@ async def run_screen(
         "elapsed_time": result.elapsed_time,
         "rows": result.rows,
     }
+
+
+@handle_tool_errors
+@tool(annotations=_LIST_ANNOTATIONS, tags={"lists"}, timeout=60.0)
+async def list_reports(ctx: Context) -> list[dict]:
+    """List available predefined MarketSurge reports.
+
+    Returns reports the user has added to their MarketSurge navigation
+    (e.g. "Bases Forming", "RS Line Blue Dot"). Use run_report to
+    fetch the stocks in a report.
+    """
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    reports = await client.get_reports()
+    return [{"name": r.name, "id": r.original_id} for r in reports]
+
+
+@handle_tool_errors
+@tool(annotations=_LIST_ANNOTATIONS, tags={"lists"}, timeout=60.0)
+async def run_report(
+    ctx: Context,
+    name: Annotated[
+        str | None,
+        "Report name, e.g. 'Bases Forming'. Use list_reports to see available names.",
+    ] = None,
+    report_id: Annotated[
+        int | None,
+        "Report integer ID (e.g. 124 for Bases Forming). Use if name is unknown.",
+    ] = None,
+) -> dict:
+    """Run a predefined MarketSurge report and return matching stocks.
+
+    Provide either a report name or integer ID. Use list_reports to discover
+    available report names. Reports include curated stock lists like
+    "Bases Forming", "RS Line Blue Dot", "Breakaway Gap", etc.
+    """
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    if report_id is not None:
+        result = await client.run_report(report_id)
+    elif name is not None:
+        result = await client.run_report_by_name(name)
+    else:
+        raise ValueError("Provide either 'name' or 'report_id'")
+    return {
+        "entries": [entry.to_dict() for entry in result.entries],
+        "error_values": result.error_values,
+    }
