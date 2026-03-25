@@ -13,6 +13,7 @@ from tickerscope import (
     CookieExtractionError,
     HTTPError,
     SymbolNotFoundError,
+    TickerScopeError,
     TokenExpiredError,
 )
 
@@ -61,6 +62,12 @@ class TestErrorMapping:
             message="Too many requests",
         )
         with pytest.raises(ToolError, match="429"):
+            handle_tickerscope_error(exc)
+
+    async def test_unknown_tickerscope_error_uses_user_message(self) -> None:
+        """Test unhandled TickerScopeError subclass delegates to user_message."""
+        exc = TickerScopeError("something broke")
+        with pytest.raises(ToolError, match="An unexpected error occurred"):
             handle_tickerscope_error(exc)
 
 

@@ -7,10 +7,9 @@ from collections.abc import Callable
 
 from fastmcp.exceptions import ToolError
 from tickerscope import (
-    APIError,
     CookieExtractionError,
     HTTPError,
-    SymbolNotFoundError,
+    TickerScopeError,
     TokenExpiredError,
 )
 
@@ -24,9 +23,6 @@ def handle_tickerscope_error(exc: Exception) -> None:
     Raises:
         ToolError: Mapped error with actionable message.
     """
-    if isinstance(exc, SymbolNotFoundError):
-        symbol = getattr(exc, "symbol", "UNKNOWN")
-        raise ToolError(f"Symbol '{symbol}' not found. Check the ticker spelling.")
     if isinstance(exc, TokenExpiredError):
         raise ToolError(
             "MarketSurge authentication expired. "
@@ -39,8 +35,8 @@ def handle_tickerscope_error(exc: Exception) -> None:
         )
     if isinstance(exc, HTTPError):
         raise ToolError(f"MarketSurge HTTP {exc.status_code} error: {exc.message}")
-    if isinstance(exc, APIError):
-        raise ToolError(f"MarketSurge API error: {exc}")
+    if isinstance(exc, TickerScopeError):
+        raise ToolError(exc.user_message)
     raise ToolError(f"Unexpected error: {exc}")
 
 
