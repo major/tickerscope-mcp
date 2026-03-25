@@ -32,7 +32,6 @@ async def get_price_history(
         str | None,
         "Relative lookback period: 1W, 1M, 3M, 6M, 1Y, or YTD. Cannot be used with start_date/end_date.",
     ] = None,
-    max_points: Annotated[int, "Maximum number of data points to return."] = 500,
 ) -> dict:
     """Fetch OHLCV price history for a stock from MarketSurge.
 
@@ -44,7 +43,6 @@ async def get_price_history(
         start_date=start_date,
         end_date=end_date,
         lookback=lookback,
-        max_points=max_points,
     )
 
     return {
@@ -52,6 +50,5 @@ async def get_price_history(
         "start_date": start_date,
         "end_date": end_date,
         "lookback": lookback,
-        "max_points": max_points,
         **chart_data.to_dict(),
     }

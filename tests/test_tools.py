@@ -123,7 +123,6 @@ class TestGetPriceHistory:
 
         call_kwargs = mock_client.get_chart_data.call_args.kwargs
         assert call_kwargs["lookback"] == "6M"
-        assert call_kwargs["max_points"] == 500
 
     @pytest.mark.parametrize("lookback", ["1W", "1M", "3M", "6M", "1Y", "YTD"])
     async def test_price_history_all_lookbacks(
@@ -140,34 +139,6 @@ class TestGetPriceHistory:
 
         call_kwargs = mock_client.get_chart_data.call_args.kwargs
         assert call_kwargs["lookback"] == lookback
-
-    async def test_price_history_max_points(
-        self,
-        mcp_client: Client,
-        mock_client,
-    ) -> None:
-        """Custom max_points=100 is passed through to the client."""
-        await mcp_client.call_tool(
-            "get_price_history",
-            {"symbol": "AAPL", "lookback": "1M", "max_points": 100},
-        )
-
-        call_kwargs = mock_client.get_chart_data.call_args.kwargs
-        assert call_kwargs["max_points"] == 100
-
-    async def test_price_history_default_max_points(
-        self,
-        mcp_client: Client,
-        mock_client,
-    ) -> None:
-        """Default max_points=500 is used when not specified."""
-        await mcp_client.call_tool(
-            "get_price_history",
-            {"symbol": "AAPL", "lookback": "1M"},
-        )
-
-        call_kwargs = mock_client.get_chart_data.call_args.kwargs
-        assert call_kwargs["max_points"] == 500
 
     async def test_price_history_validation_conflict(
         self,
