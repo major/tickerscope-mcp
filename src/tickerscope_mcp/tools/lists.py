@@ -1,88 +1,12 @@
-"""TickerScope MCP tools for financial data queries."""
+"""TickerScope MCP tools for watchlists and screens."""
 
 from __future__ import annotations
 
 from typing import Annotated
 
 from fastmcp import Context
-from fastmcp.exceptions import ToolError
 
 from tickerscope_mcp import mcp
-
-
-@mcp.tool
-async def analyze_stock(
-    symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
-    ctx: Context,
-) -> dict:
-    """Analyze a stock with comprehensive data from MarketSurge.
-
-    Fetches stock ratings, fundamentals, and ownership data concurrently.
-    Partial failures in fundamentals or ownership are returned in the errors
-    list rather than failing the entire request.
-
-    Args:
-        symbol: Stock ticker symbol, e.g. AAPL, NVDA, TSLA
-    """
-    client = ctx.lifespan_context["client"]
-    try:
-        analysis = await client.get_stock_analysis(symbol)
-    except Exception as exc:
-        from tickerscope_mcp import handle_tickerscope_error
-
-        handle_tickerscope_error(exc)
-        raise  # unreachable: handle_tickerscope_error always raises ToolError
-
-    return analysis.to_dict()
-
-
-@mcp.tool
-async def get_price_history(
-    symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
-    ctx: Context,
-    start_date: Annotated[
-        str | None,
-        "Start date in ISO format (YYYY-MM-DD). Use with end_date.",
-    ] = None,
-    end_date: Annotated[
-        str | None,
-        "End date in ISO format (YYYY-MM-DD). Use with start_date.",
-    ] = None,
-    lookback: Annotated[
-        str | None,
-        "Relative lookback period: 1W, 1M, 3M, 6M, 1Y, or YTD. Cannot be used with start_date/end_date.",
-    ] = None,
-    max_points: Annotated[int, "Maximum number of data points to return."] = 500,
-) -> dict:
-    """Fetch OHLCV price history for a stock from MarketSurge.
-
-    Provide either (start_date + end_date) or lookback, not both.
-    """
-    client = ctx.lifespan_context["client"]
-    try:
-        chart_data = await client.get_chart_data(
-            symbol,
-            start_date=start_date,
-            end_date=end_date,
-            lookback=lookback,
-            max_points=max_points,
-        )
-    except ValueError as exc:
-        raise ToolError(str(exc))
-    except Exception as exc:
-        from tickerscope_mcp import handle_tickerscope_error
-
-        handle_tickerscope_error(exc)
-        raise  # unreachable: handle_tickerscope_error always raises ToolError
-
-    return {
-        "symbol": symbol,
-        "start_date": start_date,
-        "end_date": end_date,
-        "lookback": lookback,
-        "max_points": max_points,
-        **chart_data.to_dict(),
-    }
 
 
 @mcp.tool
@@ -170,9 +94,4 @@ async def run_screen(
 
         handle_tickerscope_error(exc)
         raise  # unreachable: handle_tickerscope_error always raises ToolError
-    return {
-        "screen_name": result.screen_name,
-        "num_instruments": result.num_instruments,
-        "elapsed_time": result.elapsed_time,
-        "rows": result.rows,
-    }
+    return result.to_dict()
