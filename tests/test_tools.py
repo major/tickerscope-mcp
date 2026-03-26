@@ -67,6 +67,7 @@ class TestAnalyzeStock:
                 fundamentals=None,
                 patterns=[],
                 tight_areas=[],
+                quarterly_financials=None,
             ),
             fundamentals=None,
             ownership=None,

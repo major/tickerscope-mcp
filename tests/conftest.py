@@ -43,6 +43,7 @@ def mock_client() -> AsyncMock:
         fundamentals=None,
         patterns=[],
         tight_areas=[],
+        quarterly_financials=None,
     )
 
     fundamentals = FundamentalData(
