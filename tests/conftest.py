@@ -11,6 +11,8 @@ from tickerscope import (
     ChartData,
     FundamentalData,
     OwnershipData,
+    RSRatingHistory,
+    RSRatingSnapshot,
     Screen,
     ScreenResult,
     StockAnalysis,
@@ -82,6 +84,25 @@ def mock_client() -> AsyncMock:
         postmarket_quote=None,
         current_market_state=None,
         exchange=None,
+    )
+
+    client.get_rs_rating_history.return_value = RSRatingHistory(
+        symbol="AAPL",
+        ratings=[
+            RSRatingSnapshot(
+                letter_value="A",
+                period="week",
+                period_offset="0",
+                value=92,
+            ),
+            RSRatingSnapshot(
+                letter_value=None,
+                period="month",
+                period_offset="-1",
+                value=None,
+            ),
+        ],
+        rs_line_new_high=True,
     )
 
     client.get_watchlist_names.return_value = [

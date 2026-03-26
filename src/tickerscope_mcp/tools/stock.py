@@ -90,3 +90,21 @@ async def get_ownership(
     client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
     result = await client.get_ownership(symbol)
     return result.to_dict()
+
+
+@handle_tool_errors
+@tool(annotations=_STOCK_ANNOTATIONS, tags={"stocks"}, timeout=60.0)
+async def get_rs_rating_history(
+    symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
+    ctx: Context,
+) -> dict:
+    """Fetch reported relative strength rating history for a stock from MarketSurge.
+
+    Returns a time series of RS rating snapshots showing relative price performance
+    vs the market over various periods. Includes the rs_line_new_high flag indicating
+    when the RS line hits a new high ahead of price.
+    For comprehensive analysis, use analyze_stock instead.
+    """
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    result = await client.get_rs_rating_history(symbol)
+    return result.to_dict()

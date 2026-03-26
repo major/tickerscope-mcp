@@ -500,3 +500,36 @@ class TestGetOwnership:
 
         with pytest.raises(ToolError, match="not found"):
             await mcp_client.call_tool("get_ownership", {"symbol": "FAKE"})
+
+
+class TestGetRSRatingHistory:
+    """Tests for get_rs_rating_history tool behavior and error handling."""
+
+    async def test_get_rs_rating_history_happy_path(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return RS rating history data for a valid symbol."""
+        result = await mcp_client.call_tool("get_rs_rating_history", {"symbol": "AAPL"})
+
+        response_text = cast(Any, result.content[0]).text
+        data = json.loads(response_text)
+        assert data["symbol"] == "AAPL"
+        assert "ratings" in data
+        assert "rs_line_new_high" in data
+
+        mock_client.get_rs_rating_history.assert_called_once_with("AAPL")
+
+    async def test_get_rs_rating_history_symbol_not_found(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Raise ToolError when symbol is not found."""
+        mock_client.get_rs_rating_history.side_effect = SymbolNotFoundError(
+            "not found", symbol="FAKE"
+        )
+
+        with pytest.raises(ToolError, match="not found"):
+            await mcp_client.call_tool("get_rs_rating_history", {"symbol": "FAKE"})
