@@ -36,5 +36,10 @@ asyncio_mode = "auto"
 target-version = "py312"
 src = ["src", "tests"]
 
+[tool.commitizen]
+version = "0.1.0"
+version_files = ["pyproject.toml:^version"]
+tag_format = "v$version"
+
 [tool.uv.sources]
 tickerscope = { git = "https://github.com/major/tickerscope" }
