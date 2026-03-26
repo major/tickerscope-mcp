@@ -7,7 +7,7 @@ authors = [{ name = "Major Hayden", email = "major@mhtx.net" }]
 requires-python = ">=3.12"
 dependencies = [
     "fastmcp>=3.1.1,<4",
-    "tickerscope @ file:///home/major/git/major/tickerscope",
+    "tickerscope",
 ]
 
 [project.scripts]
@@ -35,3 +35,6 @@ asyncio_mode = "auto"
 [tool.ruff]
 target-version = "py312"
 src = ["src", "tests"]
+
+[tool.uv.sources]
+tickerscope = { git = "https://github.com/major/tickerscope" }
