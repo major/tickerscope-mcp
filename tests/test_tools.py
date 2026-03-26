@@ -533,3 +533,54 @@ class TestGetRSRatingHistory:
 
         with pytest.raises(ToolError, match="not found"):
             await mcp_client.call_tool("get_rs_rating_history", {"symbol": "FAKE"})
+
+
+class TestGetChartMarkups:
+    """Tests for get_chart_markups tool behavior and error handling."""
+
+    async def test_get_chart_markups_happy_path(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return chart markups with default frequency and sort direction."""
+        result = await mcp_client.call_tool("get_chart_markups", {"symbol": "AAPL"})
+
+        response_text = cast(Any, result.content[0]).text
+        data = json.loads(response_text)
+        assert "cursor_id" in data
+        assert "markups" in data
+
+        call_kwargs = mock_client.get_chart_markups.call_args.kwargs
+        assert call_kwargs["frequency"] == "DAILY"
+        assert call_kwargs["sort_dir"] == "ASC"
+
+    async def test_get_chart_markups_custom_params(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Pass custom frequency and sort_dir through to the client."""
+        await mcp_client.call_tool(
+            "get_chart_markups",
+            {"symbol": "AAPL", "frequency": "WEEKLY", "sort_dir": "DESC"},
+        )
+
+        call_kwargs = mock_client.get_chart_markups.call_args.kwargs
+        assert call_kwargs["frequency"] == "WEEKLY"
+        assert call_kwargs["sort_dir"] == "DESC"
+
+    async def test_get_chart_markups_error(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Raise ToolError when API returns an error for chart markups."""
+        from tickerscope import APIError
+
+        mock_client.get_chart_markups.side_effect = APIError(
+            "chart markup fetch failed"
+        )
+
+        with pytest.raises(ToolError, match="API error"):
+            await mcp_client.call_tool("get_chart_markups", {"symbol": "AAPL"})

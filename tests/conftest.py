@@ -9,6 +9,8 @@ from fastmcp import Client, FastMCP
 from tickerscope import (
     AsyncTickerScopeClient,
     ChartData,
+    ChartMarkup,
+    ChartMarkupList,
     FundamentalData,
     OwnershipData,
     RSRatingHistory,
@@ -103,6 +105,21 @@ def mock_client() -> AsyncMock:
             ),
         ],
         rs_line_new_high=True,
+    )
+
+    client.get_chart_markups.return_value = ChartMarkupList(
+        cursor_id="cursor_abc123",
+        markups=[
+            ChartMarkup(
+                id="markup-001",
+                name="Breakout pattern",
+                data='{"shapes":[]}',
+                frequency="DAILY",
+                site="marketsurge",
+                created_at="2025-01-15T10:00:00Z",
+                updated_at="2025-01-20T14:30:00Z",
+            )
+        ],
     )
 
     client.get_watchlist_names.return_value = [

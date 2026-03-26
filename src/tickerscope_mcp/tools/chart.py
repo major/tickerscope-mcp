@@ -58,3 +58,31 @@ async def get_price_history(
         "lookback": lookback,
         **chart_data.to_dict(),
     }
+
+
+@handle_tool_errors
+@tool(annotations=_CHART_ANNOTATIONS, tags={"charts"}, timeout=60.0)
+async def get_chart_markups(
+    symbol: Annotated[str, "Stock ticker symbol, e.g. AAPL, NVDA, TSLA"],
+    ctx: Context,
+    frequency: Annotated[
+        str, "Chart frequency: DAILY or WEEKLY. Defaults to DAILY."
+    ] = "DAILY",
+    sort_dir: Annotated[
+        str,
+        "Sort direction: ASC (oldest first) or DESC (newest first). Defaults to ASC.",
+    ] = "ASC",
+) -> dict:
+    """Fetch user-saved chart markups (annotations/drawings) for a stock from MarketSurge.
+
+    Returns chart markups saved by the user on MarketSurge charts. The data field
+    in each markup contains opaque serialized markup data and should not be parsed.
+    Supported frequency values: DAILY, WEEKLY. Supported sort_dir values: ASC, DESC.
+    """
+    client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
+    result = await client.get_chart_markups(
+        symbol,
+        frequency=frequency,
+        sort_dir=sort_dir,
+    )
+    return result.to_dict()
