@@ -92,9 +92,12 @@ async def run_screen(
     Use list_screens to view user-saved screens.
     """
     client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
-    result = await client.run_screen(screen_name, parameters or [])
+    try:
+        result = await client.run_coach_screen_by_name(screen_name)
+    except Exception:
+        result = await client.run_screen(screen_name, parameters or [])
     return {
-        "screen_name": result.screen_name,
+        "screen_name": result.screen_name or screen_name,
         "num_instruments": result.num_instruments,
         "elapsed_time": result.elapsed_time,
         "rows": result.rows,
