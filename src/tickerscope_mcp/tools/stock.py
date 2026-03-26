@@ -27,7 +27,7 @@ async def analyze_stock(
     Partial failures in fundamentals or ownership are returned in the errors
     list rather than failing the entire request.
 
-    Stock data now includes valuation ratios (P/E, P/S, P/CF), risk metrics (alpha, beta), short interest data, and blue dot event flags.
+    Stock data now includes valuation ratios, risk metrics, short interest data, and blue dot event flags.
 
     Args:
         symbol: Stock ticker symbol, e.g. AAPL, NVDA, TSLA
@@ -48,7 +48,7 @@ async def get_stock(
     Use this for targeted stock data without fundamentals or ownership.
     For comprehensive analysis, use analyze_stock instead.
 
-    Stock data now includes valuation ratios (P/E, P/S, P/CF), risk metrics (alpha, beta), short interest data, and blue dot event flags.
+    Stock data now includes valuation ratios, risk metrics, short interest data, and blue dot event flags.
 
     Args:
         symbol: Stock ticker symbol, e.g. AAPL, NVDA, TSLA
