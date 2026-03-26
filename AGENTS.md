@@ -6,7 +6,7 @@
 
 ## OVERVIEW
 
-MCP server exposing MarketSurge financial data (stocks, charts, screens, watchlists) via 11 tools. Built on FastMCP + tickerscope client library. Read-only, async-first, stdio transport.
+MCP server exposing MarketSurge financial data (stocks, charts, screens, watchlists) via 13 tools. Built on FastMCP + tickerscope client library. Read-only, async-first, stdio transport.
 
 ## STRUCTURE
 
@@ -15,8 +15,8 @@ src/tickerscope_mcp/
   __init__.py        # Entry point: FastMCP server, lifespan, main()
   errors.py          # Exception mapping: tickerscope errors -> ToolError
   tools/
-    stock.py         # 4 tools: analyze_stock, get_stock, get_fundamentals, get_ownership
-    chart.py         # 1 tool: get_price_history (OHLCV + optional benchmark RS line)
+    stock.py         # 5 tools: analyze_stock, get_stock, get_fundamentals, get_ownership, get_rs_rating_history
+    chart.py         # 2 tools: get_price_history (OHLCV + optional benchmark RS line), get_chart_markups
     lists.py         # 6 tools: watchlists, screens, reports
 tests/
   conftest.py        # 3 fixtures: mock_client, mcp_server, mcp_client

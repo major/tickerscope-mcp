@@ -44,6 +44,8 @@ async def get_watchlist(
     Looks up the watchlist by name, then fetches enriched data including
     ratings, prices, and industry information for each symbol.
 
+    Entries now include market cap, IPO date, dollar volume, and instrument type.
+
     Args:
         name: Watchlist name. Use list_watchlists to see available names.
     """
@@ -130,6 +132,8 @@ async def run_report(
     Provide either a report name or integer ID. Use list_reports to discover
     available report names. Reports include curated stock lists like
     "Bases Forming", "RS Line Blue Dot", "Breakaway Gap", etc.
+
+    Entries now include market cap, IPO date, dollar volume, and instrument type.
     """
     client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
     if report_id is not None:
