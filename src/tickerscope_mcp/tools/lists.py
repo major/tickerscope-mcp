@@ -104,10 +104,9 @@ async def run_screen(
 async def list_reports(ctx: Context) -> list[dict]:
     """List available predefined MarketSurge reports.
 
-    Returns reports the user has added to their MarketSurge navigation
-    (e.g. "Bases Forming", "RS Line Blue Dot"). Use run_report to
-    fetch the stocks in a report.
-    """
+    Returns the full catalog of predefined reports (e.g. "Bases Forming",
+    "RS Line Blue Dot", "Ants List"). Use run_report to fetch the stocks
+    in a report."""
     client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
     reports = await client.get_reports()
     return [{"name": r.name, "id": r.original_id} for r in reports]
@@ -139,7 +138,14 @@ async def run_report(
         result = await client.run_report_by_name(name)
     else:
         raise ValueError("Provide either 'name' or 'report_id'")
+    # run_report returns list[WatchlistEntry], run_report_by_name returns AdhocScreenResult
+    if isinstance(result, list):
+        entries = result
+        error_values = None
+    else:
+        entries = result.entries
+        error_values = result.error_values
     return {
-        "entries": [entry.to_dict() for entry in result.entries],
-        "error_values": result.error_values,
+        "entries": [entry.to_dict() for entry in entries],
+        "error_values": error_values,
     }

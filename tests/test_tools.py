@@ -66,6 +66,7 @@ class TestAnalyzeStock:
                 ownership=None,
                 fundamentals=None,
                 patterns=[],
+                tight_areas=[],
             ),
             fundamentals=None,
             ownership=None,
@@ -176,6 +177,34 @@ class TestGetPriceHistory:
                 "get_price_history",
                 {"symbol": "AAPL"},
             )
+
+    async def test_price_history_benchmark(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Pass benchmark symbol through to the client for RS line computation."""
+        await mcp_client.call_tool(
+            "get_price_history",
+            {"symbol": "AAPL", "lookback": "1Y", "benchmark": "0S&P5"},
+        )
+
+        call_kwargs = mock_client.get_chart_data.call_args.kwargs
+        assert call_kwargs["benchmark"] == "0S&P5"
+
+    async def test_price_history_benchmark_defaults_none(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Omit benchmark from client call when not provided."""
+        await mcp_client.call_tool(
+            "get_price_history",
+            {"symbol": "AAPL", "lookback": "1M"},
+        )
+
+        call_kwargs = mock_client.get_chart_data.call_args.kwargs
+        assert call_kwargs["benchmark"] is None
 
     async def test_price_history_symbol_not_found(
         self,

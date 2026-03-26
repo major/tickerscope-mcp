@@ -32,6 +32,11 @@ async def get_price_history(
         str | None,
         "Relative lookback period: 1W, 1M, 3M, 6M, 1Y, or YTD. Cannot be used with start_date/end_date.",
     ] = None,
+    benchmark: Annotated[
+        str | None,
+        "Benchmark symbol for relative strength computation (e.g. '0S&P5' for S&P 500). "
+        "When provided, the response includes a benchmark_time_series for computing RS line ratios.",
+    ] = None,
 ) -> dict:
     """Fetch OHLCV price history for a stock from MarketSurge.
 
@@ -43,6 +48,7 @@ async def get_price_history(
         start_date=start_date,
         end_date=end_date,
         lookback=lookback,
+        benchmark=benchmark,
     )
 
     return {

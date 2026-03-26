@@ -42,6 +42,7 @@ def mock_client() -> AsyncMock:
         ownership=None,
         fundamentals=None,
         patterns=[],
+        tight_areas=[],
     )
 
     fundamentals = FundamentalData(
@@ -74,6 +75,7 @@ def mock_client() -> AsyncMock:
     client.get_chart_data.return_value = ChartData(
         symbol="AAPL",
         time_series=None,
+        benchmark_time_series=None,
         quote=None,
         premarket_quote=None,
         postmarket_quote=None,
