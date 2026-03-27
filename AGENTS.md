@@ -6,7 +6,7 @@
 
 ## OVERVIEW
 
-MCP server exposing MarketSurge financial data (stocks, charts, screens, watchlists) via 13 tools. Built on FastMCP + tickerscope client library. Read-only, async-first, stdio transport.
+MCP server exposing MarketSurge financial data (stocks, charts, catalogs) via 9 tools. Built on FastMCP + tickerscope client library. Read-only, async-first, stdio transport.
 
 ## STRUCTURE
 
@@ -17,7 +17,7 @@ src/tickerscope_mcp/
   tools/
     stock.py         # 5 tools: analyze_stock, get_stock, get_fundamentals, get_ownership, get_rs_rating_history
     chart.py         # 2 tools: get_price_history (OHLCV + optional benchmark RS line), get_chart_markups
-    lists.py         # 6 tools: watchlists, screens, reports
+    lists.py         # 2 tools: get_catalog (unified discovery), run_catalog_entry (dispatch)
 tests/
   conftest.py        # 3 fixtures: mock_client, mcp_server, mcp_client
   test_smoke.py      # Server boot test
@@ -69,7 +69,7 @@ async def tool_name(
 - **Never exceed cyclomatic complexity B** - `make radon` fails on C or higher
 - **No logging** - errors propagate to MCP clients via ToolError, not logs
 - **No .env files or env vars** - auth is implicit via browser cookies
-- **Never mix screen types** - `list_screens()` = user-saved, `run_screen()` = predefined (IBD 50 etc.)
+- **Never mix catalog kinds** - `kind="screen"` entries are discovery-only (not dispatchable via `run_catalog_entry()`)
 
 ## TESTING
 
@@ -114,3 +114,4 @@ make ci          # lint -> typecheck -> radon -> test (run before PR)
 - **Price history param conflict**: `lookback` and `start_date/end_date` are mutually exclusive. Client raises `ValueError`.
 - **FileSystemProvider**: Tools in `src/tickerscope_mcp/tools/` are auto-discovered. No manual registration needed. Just add a new `.py` file with `@tool` decorated functions.
 - **run_report return types differ**: `run_report(id)` returns `list[WatchlistEntry]`, `run_report_by_name(name)` returns `AdhocScreenResult`. The tool normalizes both to `{"entries": [...], "error_values": ...}`.
+- **Partial failures**: `get_catalog()` tolerates partial failures. If one source errors, entries from other sources are still returned with the error collected in the `errors` list.

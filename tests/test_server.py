@@ -22,9 +22,15 @@ from fastmcp.tools.function_tool import FunctionTool
 
 from tickerscope_mcp import handle_tickerscope_error, mcp
 
-STOCK_TOOLS = {"analyze_stock", "get_stock", "get_fundamentals", "get_ownership"}
-LIST_TOOLS = {"list_watchlists", "get_watchlist", "list_screens", "run_screen"}
-CHART_TOOLS = {"get_price_history"}
+STOCK_TOOLS = {
+    "analyze_stock",
+    "get_stock",
+    "get_fundamentals",
+    "get_ownership",
+    "get_rs_rating_history",
+}
+LIST_TOOLS = {"get_catalog", "run_catalog_entry"}
+CHART_TOOLS = {"get_price_history", "get_chart_markups"}
 
 
 class TestErrorMapping:
@@ -102,10 +108,10 @@ class TestServerSetup:
 
 
 class TestToolMetadata:
-    """Test tool annotations, tags, and timeouts on all 9 tools."""
+    """Test tool annotations, tags, and timeouts on all tools."""
 
-    async def test_all_nine_tools_registered(self) -> None:
-        """Test all 9 expected tools are registered."""
+    async def test_all_tools_registered(self) -> None:
+        """Test all expected tools are registered."""
         tools = await mcp.list_tools()
         names = {t.name for t in tools}
         expected = STOCK_TOOLS | LIST_TOOLS | CHART_TOOLS
@@ -133,7 +139,7 @@ class TestToolMetadata:
             assert "charts" in tool_map[name].tags, f"{name} missing 'charts' tag"
 
     async def test_all_tools_have_timeout(self) -> None:
-        """Test all 9 tools have a 60-second timeout in their __fastmcp__ metadata."""
+        """Test all tools have a 60-second timeout in their __fastmcp__ metadata."""
         tools = await mcp.list_tools()
         tool_map = {t.name: t for t in tools}
         all_tools = STOCK_TOOLS | LIST_TOOLS | CHART_TOOLS
@@ -145,7 +151,7 @@ class TestToolMetadata:
             assert meta.timeout == 60.0, f"{name} timeout != 60.0"
 
     async def test_all_tools_have_read_only_annotation(self) -> None:
-        """Test all 9 tools have readOnlyHint=True annotation."""
+        """Test all tools have readOnlyHint=True annotation."""
         tools = await mcp.list_tools()
         tool_map = {t.name: t for t in tools}
         all_tools = STOCK_TOOLS | LIST_TOOLS | CHART_TOOLS
@@ -155,7 +161,7 @@ class TestToolMetadata:
             assert ann.readOnlyHint is True, f"{name} readOnlyHint != True"
 
     async def test_all_tools_have_idempotent_annotation(self) -> None:
-        """Test all 9 tools have idempotentHint=True annotation."""
+        """Test all tools have idempotentHint=True annotation."""
         tools = await mcp.list_tools()
         tool_map = {t.name: t for t in tools}
         all_tools = STOCK_TOOLS | LIST_TOOLS | CHART_TOOLS

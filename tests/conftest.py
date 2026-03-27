@@ -8,6 +8,9 @@ import pytest
 from fastmcp import Client, FastMCP
 from tickerscope import (
     AsyncTickerScopeClient,
+    Catalog,
+    CatalogEntry,
+    CatalogResult,
     ChartData,
     ChartMarkup,
     ChartMarkupList,
@@ -15,11 +18,8 @@ from tickerscope import (
     OwnershipData,
     RSRatingHistory,
     RSRatingSnapshot,
-    Screen,
-    ScreenResult,
     StockAnalysis,
     StockData,
-    WatchlistSummary,
 )
 
 from tickerscope_mcp import mcp
@@ -122,35 +122,21 @@ def mock_client() -> AsyncMock:
         ],
     )
 
-    client.get_watchlist_names.return_value = [
-        WatchlistSummary(
-            id=123,
-            name="My Watchlist",
-            last_modified=None,
-            description=None,
-        )
-    ]
+    client.get_catalog.return_value = Catalog(
+        entries=[
+            CatalogEntry(name="My Watchlist", kind="watchlist", watchlist_id=123),
+            CatalogEntry(name="IBD 50", kind="coach_screen", coach_screen_id="ibd50"),
+            CatalogEntry(name="Bases Forming", kind="report", report_id=124),
+            CatalogEntry(name="My Filter", kind="screen"),
+        ],
+        errors=[],
+    )
 
-    client.screen_watchlist_by_name.return_value = []
-
-    client.get_screens.return_value = [
-        Screen(
-            id="ibd50",
-            name="IBD 50",
-            type="PREDEFINED",
-            source=None,
-            description=None,
-            filter_criteria=None,
-            created_at=None,
-            updated_at=None,
-        )
-    ]
-
-    client.run_screen.return_value = ScreenResult(
-        screen_name="IBD 50",
-        elapsed_time=None,
-        num_instruments=0,
-        rows=[],
+    client.run_catalog_entry.return_value = CatalogResult(
+        kind="report",
+        screen_result=None,
+        adhoc_result=None,
+        watchlist_entries=None,
     )
 
     return client

@@ -1274,7 +1274,7 @@ wheels = [
 [[package]]
 name = "tickerscope"
 version = "0.2.1"
-source = { git = "https://github.com/major/tickerscope#e2ae00f6ad6b3dd19957d5018e9f1c723c7cdf54" }
+source = { git = "https://github.com/major/tickerscope#97b071ce03907109b8897e115b10dd4c340e8531" }
 dependencies = [
     { name = "httpx" },
     { name = "rookiepy" },

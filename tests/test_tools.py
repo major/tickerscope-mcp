@@ -8,7 +8,15 @@ from typing import Any, cast
 import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
-from tickerscope import APIError, SymbolNotFoundError, WatchlistEntry
+from tickerscope import (
+    APIError,
+    Catalog,
+    CatalogEntry,
+    CatalogResult,
+    ScreenResult,
+    SymbolNotFoundError,
+    WatchlistEntry,
+)
 
 
 class TestAnalyzeStock:
@@ -224,189 +232,216 @@ class TestGetPriceHistory:
             )
 
 
-class TestListWatchlists:
-    """Tests for list_watchlists tool behavior."""
+class TestGetCatalog:
+    """Tests for get_catalog tool behavior and error handling."""
 
-    async def test_list_watchlists_happy_path(
+    async def test_get_catalog_happy_path(
         self,
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Return list of watchlists with id, name, and description."""
-        result = await mcp_client.call_tool("list_watchlists", {})
+        """Return all catalog entries from all sources."""
+        result = await mcp_client.call_tool("get_catalog", {})
 
         data = json.loads(cast(Any, result.content[0]).text)
-        assert isinstance(data, list)
-        assert len(data) == 1
-        assert data[0]["id"] == 123
-        assert data[0]["name"] == "My Watchlist"
-        assert "description" in data[0]
-        assert "last_modified" not in data[0]
+        assert "entries" in data
+        assert "errors" in data
+        assert len(data["entries"]) == 4
+        assert data["errors"] == []
 
-        mock_client.get_watchlist_names.assert_called_once()
+        kinds = {e["kind"] for e in data["entries"]}
+        assert kinds == {"watchlist", "coach_screen", "report", "screen"}
 
-    async def test_list_watchlists_empty(
+        mock_client.get_catalog.assert_called_once()
+
+    async def test_get_catalog_filter_by_kind(
         self,
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Return empty list when no watchlists exist."""
-        mock_client.get_watchlist_names.return_value = []
+        """Return only entries matching the requested kind."""
+        result = await mcp_client.call_tool("get_catalog", {"kind": "watchlist"})
 
-        result = await mcp_client.call_tool("list_watchlists", {})
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert len(data["entries"]) == 1
+        assert data["entries"][0]["kind"] == "watchlist"
+        assert data["entries"][0]["name"] == "My Watchlist"
 
-        if result.content:
-            data = json.loads(cast(Any, result.content[0]).text)
-        else:
-            data = cast(Any, result.structured_content).get("result", [])
-        assert data == []
-
-
-class TestGetWatchlist:
-    """Tests for get_watchlist tool behavior and error handling."""
-
-    async def test_get_watchlist_enriched(
+    async def test_get_catalog_filter_no_matches(
         self,
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Return enriched watchlist entries with to_dict() serialization."""
-        mock_client.screen_watchlist_by_name.return_value = [
-            WatchlistEntry(
-                symbol="AAPL",
-                company_name="Apple Inc",
-                list_rank=1,
-                price=150.0,
-                price_net_change=2.5,
-                price_pct_change=1.7,
-                price_pct_off_52w_high=-5.0,
-                volume=1000000,
-                volume_change=50000,
-                volume_pct_change=5.0,
-                composite_rating=95,
-                eps_rating=90,
-                rs_rating=88,
-                acc_dis_rating="A",
-                smr_rating="A",
-                industry_group_rank=10,
-                industry_name="Technology",
+        """Return empty entries list when kind filter has no matches."""
+        mock_client.get_catalog.return_value = Catalog(entries=[], errors=[])
+
+        result = await mcp_client.call_tool("get_catalog", {"kind": "watchlist"})
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert data["entries"] == []
+
+    async def test_get_catalog_partial_errors(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Return entries from successful sources with errors from failed ones."""
+        mock_client.get_catalog.return_value = Catalog(
+            entries=[
+                CatalogEntry(name="Bases Forming", kind="report", report_id=124),
+            ],
+            errors=["screens endpoint down"],
+        )
+
+        result = await mcp_client.call_tool("get_catalog", {})
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert len(data["entries"]) == 1
+        assert data["errors"] == ["screens endpoint down"]
+
+    async def test_get_catalog_api_error(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Raise ToolError when catalog fetch fails entirely."""
+        mock_client.get_catalog.side_effect = APIError("catalog failed")
+
+        with pytest.raises(ToolError, match="API error"):
+            await mcp_client.call_tool("get_catalog", {})
+
+
+class TestRunCatalogEntry:
+    """Tests for run_catalog_entry tool behavior and error handling."""
+
+    async def test_run_report_entry(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Dispatch a report entry and return CatalogResult."""
+        result = await mcp_client.call_tool(
+            "run_catalog_entry",
+            {"kind": "report", "name": "Bases Forming", "report_id": 124},
+        )
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert data["kind"] == "report"
+        mock_client.run_catalog_entry.assert_called_once()
+
+        entry = mock_client.run_catalog_entry.call_args.args[0]
+        assert entry.kind == "report"
+        assert entry.report_id == 124
+
+    async def test_run_coach_screen_entry(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Dispatch a coach screen entry and return CatalogResult."""
+        mock_client.run_catalog_entry.return_value = CatalogResult(
+            kind="coach_screen",
+            screen_result=ScreenResult(
+                screen_name="IBD 50",
+                elapsed_time=None,
+                num_instruments=0,
+                rows=[],
+            ),
+        )
+
+        result = await mcp_client.call_tool(
+            "run_catalog_entry",
+            {"kind": "coach_screen", "name": "IBD 50", "coach_screen_id": "ibd50"},
+        )
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert data["kind"] == "coach_screen"
+        assert data["screen_result"]["screen_name"] == "IBD 50"
+
+    async def test_run_watchlist_entry(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Dispatch a watchlist entry and return CatalogResult with entries."""
+        mock_client.run_catalog_entry.return_value = CatalogResult(
+            kind="watchlist",
+            watchlist_entries=[
+                WatchlistEntry(
+                    symbol="AAPL",
+                    company_name="Apple Inc",
+                    list_rank=1,
+                    price=150.0,
+                    price_net_change=2.5,
+                    price_pct_change=1.7,
+                    price_pct_off_52w_high=-5.0,
+                    volume=1000000,
+                    volume_change=50000,
+                    volume_pct_change=5.0,
+                    composite_rating=95,
+                    eps_rating=90,
+                    rs_rating=88,
+                    acc_dis_rating="A",
+                    smr_rating="A",
+                    industry_group_rank=10,
+                    industry_name="Technology",
+                ),
+            ],
+        )
+
+        result = await mcp_client.call_tool(
+            "run_catalog_entry",
+            {"kind": "watchlist", "name": "My Watchlist", "watchlist_id": 123},
+        )
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert data["kind"] == "watchlist"
+        assert len(data["watchlist_entries"]) == 1
+        assert data["watchlist_entries"][0]["symbol"] == "AAPL"
+
+    async def test_run_screen_entry_raises(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Raise ToolError when dispatching a screen entry (not supported)."""
+        mock_client.run_catalog_entry.side_effect = NotImplementedError(
+            "Screen entries cannot be dispatched"
+        )
+
+        with pytest.raises(ToolError, match="Screen entries cannot be dispatched"):
+            await mcp_client.call_tool(
+                "run_catalog_entry",
+                {"kind": "screen", "name": "My Filter"},
             )
-        ]
 
-        result = await mcp_client.call_tool("get_watchlist", {"name": "My Watchlist"})
-
-        data = json.loads(cast(Any, result.content[0]).text)
-        assert isinstance(data, list)
-        assert len(data) == 1
-        assert data[0]["symbol"] == "AAPL"
-        assert data[0]["company_name"] == "Apple Inc"
-        assert data[0]["composite_rating"] == 95
-
-        mock_client.screen_watchlist_by_name.assert_called_once_with("My Watchlist")
-
-    async def test_get_watchlist_not_found(
+    async def test_run_entry_api_error(
         self,
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Raise ToolError when watchlist name does not match any known watchlist."""
-        mock_client.screen_watchlist_by_name.side_effect = APIError(
-            "No watchlist found with name 'Nonexistent'"
-        )
+        """Raise ToolError when catalog dispatch fails."""
+        mock_client.run_catalog_entry.side_effect = APIError("dispatch failed")
 
         with pytest.raises(ToolError, match="API error"):
-            await mcp_client.call_tool("get_watchlist", {"name": "Nonexistent"})
+            await mcp_client.call_tool(
+                "run_catalog_entry",
+                {"kind": "report", "name": "Bad Report", "report_id": 999},
+            )
 
-
-class TestListScreens:
-    """Tests for list_screens tool behavior."""
-
-    async def test_list_screens_happy_path(
+    async def test_run_entry_defaults_name_to_empty(
         self,
         mcp_client: Client,
         mock_client,
     ) -> None:
-        """Return list of screens with id, name, description, and type."""
-        result = await mcp_client.call_tool("list_screens", {})
-
-        data = json.loads(cast(Any, result.content[0]).text)
-        assert isinstance(data, list)
-        assert len(data) == 1
-        assert data[0]["id"] == "ibd50"
-        assert data[0]["name"] == "IBD 50"
-        assert data[0]["type"] == "PREDEFINED"
-        assert "description" in data[0]
-        assert "filter_criteria" not in data[0]
-
-        mock_client.get_screens.assert_called_once()
-
-    async def test_list_screens_empty(
-        self,
-        mcp_client: Client,
-        mock_client,
-    ) -> None:
-        """Return empty list when no screens exist."""
-        mock_client.get_screens.return_value = []
-
-        result = await mcp_client.call_tool("list_screens", {})
-
-        if result.content:
-            data = json.loads(cast(Any, result.content[0]).text)
-        else:
-            data = cast(Any, result.structured_content).get("result", [])
-        assert data == []
-
-
-class TestRunScreen:
-    """Tests for run_screen tool behavior and error handling."""
-
-    async def test_run_screen_happy_path(
-        self,
-        mcp_client: Client,
-        mock_client,
-    ) -> None:
-        """Return screen results with screen_name, num_instruments, and rows."""
-        result = await mcp_client.call_tool("run_screen", {"screen_name": "IBD 50"})
-
-        data = json.loads(cast(Any, result.content[0]).text)
-        assert data["screen_name"] == "IBD 50"
-        assert "num_instruments" in data
-        assert "rows" in data
-        mock_client.run_screen.assert_called_once_with("IBD 50", [])
-
-    async def test_run_screen_with_params(
-        self,
-        mcp_client: Client,
-        mock_client,
-    ) -> None:
-        """Pass screen parameters through to the client."""
-        params = [{"name": "MinPrice", "value": "10"}]
+        """Use empty string for name when not provided."""
         await mcp_client.call_tool(
-            "run_screen", {"screen_name": "IBD 50", "parameters": params}
+            "run_catalog_entry",
+            {"kind": "report", "report_id": 124},
         )
 
-        mock_client.run_screen.assert_called_once_with("IBD 50", params)
-
-    async def test_run_screen_no_params_default(
-        self,
-        mcp_client: Client,
-        mock_client,
-    ) -> None:
-        """Default to empty parameters list when none provided."""
-        await mcp_client.call_tool("run_screen", {"screen_name": "IBD 50"})
-
-        mock_client.run_screen.assert_called_once_with("IBD 50", [])
-
-    async def test_run_screen_api_error(
-        self,
-        mcp_client: Client,
-        mock_client,
-    ) -> None:
-        """Raise ToolError when API returns an error."""
-        mock_client.run_screen.side_effect = APIError("screen failed")
-
-        with pytest.raises(ToolError, match="API error"):
-            await mcp_client.call_tool("run_screen", {"screen_name": "INVALID"})
+        entry = mock_client.run_catalog_entry.call_args.args[0]
+        assert entry.name == ""
 
 
 class TestGetStock:
