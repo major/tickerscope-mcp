@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastmcp import Client, FastMCP
@@ -10,7 +10,6 @@ from tickerscope import (
     AsyncTickerScopeClient,
     Catalog,
     CatalogEntry,
-    CatalogResult,
     ChartData,
     ChartMarkup,
     ChartMarkupList,
@@ -132,12 +131,10 @@ def mock_client() -> AsyncMock:
         errors=[],
     )
 
-    client.run_catalog_entry.return_value = CatalogResult(
-        kind="report",
-        screen_result=None,
-        adhoc_result=None,
-        watchlist_entries=None,
-    )
+    catalog_result = MagicMock()
+    catalog_result.total = 0
+    catalog_result.to_dict.return_value = {"kind": "report"}
+    client.run_catalog_entry.return_value = catalog_result
 
     return client
 

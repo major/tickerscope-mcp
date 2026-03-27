@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Any, cast
+from unittest.mock import MagicMock
 
 import pytest
 from fastmcp import Client
@@ -12,10 +13,7 @@ from tickerscope import (
     APIError,
     Catalog,
     CatalogEntry,
-    CatalogResult,
-    ScreenResult,
     SymbolNotFoundError,
-    WatchlistEntry,
 )
 
 
@@ -339,15 +337,18 @@ class TestRunCatalogEntry:
         mock_client,
     ) -> None:
         """Dispatch a coach screen entry and return CatalogResult."""
-        mock_client.run_catalog_entry.return_value = CatalogResult(
-            kind="coach_screen",
-            screen_result=ScreenResult(
-                screen_name="IBD 50",
-                elapsed_time=None,
-                num_instruments=0,
-                rows=[],
-            ),
-        )
+        result_mock = MagicMock()
+        result_mock.total = 1
+        result_mock.to_dict.return_value = {
+            "kind": "coach_screen",
+            "screen_result": {
+                "screen_name": "IBD 50",
+                "elapsed_time": None,
+                "num_instruments": 0,
+                "rows": [],
+            },
+        }
+        mock_client.run_catalog_entry.return_value = result_mock
 
         result = await mcp_client.call_tool(
             "run_catalog_entry",
@@ -364,30 +365,20 @@ class TestRunCatalogEntry:
         mock_client,
     ) -> None:
         """Dispatch a watchlist entry and return CatalogResult with entries."""
-        mock_client.run_catalog_entry.return_value = CatalogResult(
-            kind="watchlist",
-            watchlist_entries=[
-                WatchlistEntry(
-                    symbol="AAPL",
-                    company_name="Apple Inc",
-                    list_rank=1,
-                    price=150.0,
-                    price_net_change=2.5,
-                    price_pct_change=1.7,
-                    price_pct_off_52w_high=-5.0,
-                    volume=1000000,
-                    volume_change=50000,
-                    volume_pct_change=5.0,
-                    composite_rating=95,
-                    eps_rating=90,
-                    rs_rating=88,
-                    acc_dis_rating="A",
-                    smr_rating="A",
-                    industry_group_rank=10,
-                    industry_name="Technology",
-                ),
+        result_mock = MagicMock()
+        result_mock.total = 1
+        result_mock.to_dict.return_value = {
+            "kind": "watchlist",
+            "watchlist_entries": [
+                {
+                    "symbol": "AAPL",
+                    "company_name": "Apple Inc",
+                    "composite_rating": 95,
+                    "rs_rating": 88,
+                },
             ],
-        )
+        }
+        mock_client.run_catalog_entry.return_value = result_mock
 
         result = await mcp_client.call_tool(
             "run_catalog_entry",
@@ -442,6 +433,111 @@ class TestRunCatalogEntry:
 
         entry = mock_client.run_catalog_entry.call_args.args[0]
         assert entry.name == ""
+
+    async def test_run_entry_passes_pagination(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Pass limit and offset through to the client."""
+        await mcp_client.call_tool(
+            "run_catalog_entry",
+            {"kind": "report", "report_id": 124, "limit": 25, "offset": 50},
+        )
+
+        call_kwargs = mock_client.run_catalog_entry.call_args.kwargs
+        assert call_kwargs["limit"] == 25
+        assert call_kwargs["offset"] == 50
+
+    async def test_run_entry_builds_filters(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Build filters dict from individual filter parameters."""
+        await mcp_client.call_tool(
+            "run_catalog_entry",
+            {
+                "kind": "report",
+                "report_id": 124,
+                "min_composite": 80,
+                "min_rs": 70,
+                "exclude_spacs": True,
+            },
+        )
+
+        call_kwargs = mock_client.run_catalog_entry.call_args.kwargs
+        assert call_kwargs["filters"] == {
+            "min_composite": 80,
+            "min_rs": 70,
+            "exclude_spacs": True,
+        }
+
+    async def test_run_entry_no_filters_passes_none(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Pass filters=None when no filter parameters are set."""
+        await mcp_client.call_tool(
+            "run_catalog_entry",
+            {"kind": "report", "report_id": 124},
+        )
+
+        call_kwargs = mock_client.run_catalog_entry.call_args.kwargs
+        assert call_kwargs["filters"] is None
+
+    async def test_run_entry_parses_fields(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Parse comma-separated fields string and pass as set to to_dict."""
+        await mcp_client.call_tool(
+            "run_catalog_entry",
+            {
+                "kind": "report",
+                "report_id": 124,
+                "fields": "symbol, composite_rating, rs_rating",
+            },
+        )
+
+        result_mock = mock_client.run_catalog_entry.return_value
+        result_mock.to_dict.assert_called_once_with(
+            fields={"symbol", "composite_rating", "rs_rating"}
+        )
+
+    async def test_run_entry_response_metadata(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Include total, limit, and offset in response."""
+        mock_client.run_catalog_entry.return_value.total = 875
+
+        result = await mcp_client.call_tool(
+            "run_catalog_entry",
+            {"kind": "report", "report_id": 124, "limit": 25, "offset": 50},
+        )
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert data["total"] == 875
+        assert data["limit"] == 25
+        assert data["offset"] == 50
+
+    async def test_run_entry_defaults_offset_to_zero(
+        self,
+        mcp_client: Client,
+        mock_client,
+    ) -> None:
+        """Default offset to 0 when not provided."""
+        result = await mcp_client.call_tool(
+            "run_catalog_entry",
+            {"kind": "report", "report_id": 124},
+        )
+
+        data = json.loads(cast(Any, result.content[0]).text)
+        assert data["offset"] == 0
 
 
 class TestGetStock:

@@ -16,6 +16,37 @@ tool = cast(Callable[..., Any], _tool)
 _LIST_ANNOTATIONS = ToolAnnotations(readOnlyHint=True, idempotentHint=True)
 
 
+def _build_filters(
+    min_composite: int | None,
+    min_rs: int | None,
+    exclude_spacs: bool,
+) -> dict[str, Any] | None:
+    """Build a filters dict from individual filter parameters.
+
+    Returns ``None`` when no filters are active so the library skips
+    filtering entirely.
+    """
+    filters: dict[str, Any] = {}
+    if min_composite is not None:
+        filters["min_composite"] = min_composite
+    if min_rs is not None:
+        filters["min_rs"] = min_rs
+    if exclude_spacs:
+        filters["exclude_spacs"] = exclude_spacs
+    return filters or None
+
+
+def _parse_fields(fields: str | None) -> set[str] | None:
+    """Parse a comma-separated fields string into a set.
+
+    Returns ``None`` when *fields* is ``None`` or contains only
+    whitespace, so the library returns all fields.
+    """
+    if fields is None:
+        return None
+    return {f.strip() for f in fields.split(",") if f.strip()} or None
+
+
 @handle_tool_errors
 @tool(annotations=_LIST_ANNOTATIONS, tags={"lists"}, timeout=60.0)
 async def get_catalog(
@@ -65,6 +96,32 @@ async def run_catalog_entry(
         int | None,
         "Watchlist ID (required when kind='watchlist').",
     ] = None,
+    limit: Annotated[
+        int | None,
+        "Maximum number of results to return. Defaults to all.",
+    ] = None,
+    offset: Annotated[
+        int | None,
+        "Starting index for pagination (0-based). Use with limit.",
+    ] = None,
+    fields: Annotated[
+        str | None,
+        "Comma-separated list of fields to include per entry "
+        "(e.g., 'symbol,composite_rating,rs_rating,price,industry_name'). "
+        "Omit for all fields.",
+    ] = None,
+    min_composite: Annotated[
+        int | None,
+        "Minimum Composite Rating filter (0-99).",
+    ] = None,
+    min_rs: Annotated[
+        int | None,
+        "Minimum RS Rating filter (0-99).",
+    ] = None,
+    exclude_spacs: Annotated[
+        bool,
+        "Exclude SPAC/blank-check entries.",
+    ] = False,
 ) -> dict:
     """Run a catalog entry and return its results.
 
@@ -72,6 +129,11 @@ async def run_catalog_entry(
     Pass the identifying fields from a get_catalog entry directly.
 
     Screen entries cannot be dispatched (raises an error).
+
+    Reports and coach screens can return hundreds of stocks. Use ``limit``
+    and ``offset`` for manageable pages, ``fields`` to select only the
+    columns you need, and the filter parameters to narrow results
+    server-side before they reach you.
     """
     client = ctx.lifespan_context["client"]  # pyright: ignore[reportAttributeAccessIssue]
     entry = CatalogEntry(
@@ -81,5 +143,16 @@ async def run_catalog_entry(
         coach_screen_id=coach_screen_id,
         watchlist_id=watchlist_id,
     )
-    result = await client.run_catalog_entry(entry)
-    return result.to_dict()
+
+    result = await client.run_catalog_entry(
+        entry,
+        limit=limit,
+        offset=offset,
+        filters=_build_filters(min_composite, min_rs, exclude_spacs),
+    )
+
+    output = result.to_dict(fields=_parse_fields(fields))
+    output["total"] = result.total
+    output["limit"] = limit
+    output["offset"] = offset or 0
+    return output
