@@ -106,10 +106,21 @@ make test        # pytest -v --cov=tickerscope_mcp --cov-report=term-missing
 make ci          # lint -> typecheck -> radon -> test (run before PR)
 ```
 
+## MAINTAINING THIS FILE
+
+After any change that affects project structure, conventions, tool signatures, test patterns, or build commands, update this file to reflect the new state. Stale docs are worse than no docs. Specific triggers:
+
+- Adding, removing, or renaming tools/files: update STRUCTURE and WHERE TO LOOK
+- Changing tool parameters or return shapes: update CONVENTIONS and NOTES
+- Adding new anti-patterns or project rules: update ANTI-PATTERNS
+- Changing test infrastructure or fixtures: update TESTING
+- Adding or modifying Makefile targets: update COMMANDS
+- Discovering new gotchas or edge cases: add to NOTES
+
 ## NOTES
 
 - **Auth requires browser login**: Users must log into marketsurge.investors.com in Firefox/Chrome first. Server extracts cookies at startup. Token expiration requires full server restart.
-- **tickerscope is a git dependency** (not PyPI): `uv.lock` pins it. Check github.com/major/tickerscope for upstream changes.
+- **tickerscope is a git dependency** (not PyPI): `uv.lock` pins it. Check github.com/major/tickerscope for upstream changes. Code is normally in ~/git/major/tickerscope if you need to inspect it locally.
 - **Partial failures**: `analyze_stock()` returns an `errors` list instead of failing when fundamentals/ownership endpoints are down.
 - **Price history param conflict**: `lookback` and `start_date/end_date` are mutually exclusive. Client raises `ValueError`.
 - **FileSystemProvider**: Tools in `src/tickerscope_mcp/tools/` are auto-discovered. No manual registration needed. Just add a new `.py` file with `@tool` decorated functions.
