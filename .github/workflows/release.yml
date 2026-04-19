@@ -41,7 +41,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: "0.11.0"
+          version: "0.11.7"
 
       - name: Install commitizen
         run: uv tool install commitizen
